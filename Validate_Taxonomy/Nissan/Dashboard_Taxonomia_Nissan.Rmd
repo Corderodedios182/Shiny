@@ -1,0 +1,3020 @@
+---
+title: "Nissan México"
+output: 
+  flexdashboard::flex_dashboard:
+    logo: Nissan_1.png
+    orientation: rows
+---
+
+
+
+```{r, echo=FALSE, include=FALSE, warning = FALSE}
+
+library(flexdashboard)
+library(plotly)
+library(ggplot2)
+library(readxl)
+library(stringr)
+library(readr)
+library(readxl)
+library(stringr)
+library(lubridate)
+library(xtable)
+library(plotrix)
+library(readxl)
+library(stringr)
+library(stats)
+library(xtable)
+library(knitr)
+library(dygraphs)
+library(dplyr)
+library("kableExtra")
+library(dplyr)
+library(scales)
+suppressMessages(library(googlesheets))
+suppressMessages(library(dplyr))
+library(googlesheets)
+library("googledrive", lib.loc="~/R/win-library/3.4")
+library(rvest)
+library(rvest) ; library(tidyverse) ; library(stringr) ; require(magick) 
+
+
+mes <-'Historico'
+
+
+#############################################################################
+
+############################## SOCIAL MEDIA #################################
+
+#############################################################################
+
+
+################## Ad name #######################
+
+url = "https://taxonomybuilder.oneomg.com/Client/42"
+download.file(url, destfile = "scrapedpage.html", quiet=TRUE)
+url_html <- read_html("scrapedpage.html")
+
+
+ruta <- paste("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/SOCIAL MEDIA/",mes,sep = '')
+setwd(paste("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/SOCIAL MEDIA/",mes, sep = ''))
+
+
+
+gs_auth(new_user = TRUE) # Iniciar sesión
+base <- gs_read(gs_title('Social Media'), ws = gs_ws_ls(ss = gs_title("Social Media"))[grep(mes,gs_ws_ls(ss = gs_title("Social Media")))])
+estructura <- data.frame(matrix(nrow = 3,ncol = 3))
+
+
+diccionario <- data.frame(matrix(nrow = 0,ncol = 5))
+
+for (i in seq(dim(data.frame(html_text(html_nodes(url_html,'.panel-heading'))))[1])) { # Este primer for corre sobre todos los bloques que haya en existencia en el taxonómi de la cuenta
+  for (j in seq(length(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])))) { # Este for corre sobre el número de variables que tenga el bloque i
+    print(paste('valor de j',j))
+    if(length(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])[j][1])[1]))) != 0){
+      for (k in seq(2,length(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])[j][1])[1]))))) {
+        print(k)
+        panel <- unique(trimws(str_split(gsub('\r','_',gsub('\t','_', gsub('\n','_',html_text(html_nodes(url_html,'.panel-heading'))[i]))),'_')[[1]]))[2]
+        variable <- html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])[j]))[1]%>% html_text()
+        valor <- html_attrs(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])[j])))[k])[[1]]
+        registro <- data.frame(t(as.matrix(c(panel,variable,valor))))
+        #registro <- t(registro)
+        colnames(registro) <- 1:5
+        diccionario <- rbind(diccionario,registro)
+        colnames(diccionario) <- 1:5
+      }  
+    }else if(length(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])[j][1])[1]))) == 0){
+      next(j)
+    }
+    
+  }
+}
+
+
+colnames(diccionario) <- c('Panel','Variable','field_item_id','field_item_name','field_item_code')
+
+###############################################################################
+################################ Estructura ###################################
+###############################################################################
+
+
+
+fuentes <-  data.frame(matrix(nrow = dim(data.frame(html_text(html_nodes(url_html,'.panel-heading'))))[1], ncol = 2))
+
+for (i in seq(dim(data.frame(html_text(html_nodes(url_html,'.panel-heading'))))[1])) {
+  for (j in seq(length(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])))) {
+    fuentes[i,1] <- unique(trimws(str_split(gsub('\r','_',gsub('\t','_', gsub('\n','_',html_text(html_nodes(url_html,'.panel-heading'))[i]))),'_')[[1]]))[2]   
+    fuentes[i,2] <- paste(na.omit(fuentes[i,2]),html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(html_children(url_html)[2])[4])[6])[i])[2]))[2])[j]))[1]%>% html_text(),sep = '_')
+  }
+  fuentes[i,2] <- substring(fuentes[i,2], 2,nchar(fuentes[i,2]))
+}
+
+fuentes_sm <- data.frame(fuentes[grep('SOCIAL', toupper(fuentes[,1])),])
+fuentes_sm <- fuentes_sm[c(grep('ad name',fuentes_sm[,1]),grep('anuncios',fuentes_sm[,1]),grep('campaign',fuentes_sm[,1])),]
+
+estructura[,2:3] <- fuentes_sm
+
+
+base <- data.frame(unique(base[,c( "Inicio del informe","Fin del informe","Nombre del anuncio")]))
+
+rownames(base) <- seq(dim(base)[1])
+
+a_sm <- str_split(string = base[,3], pattern = "_")
+columnas <- data.frame(matrix(ncol = 2,nrow = length(a_sm)))
+
+for (i in seq(length(a_sm))) {
+  columnas[i,1:2] <- c(i,length(a_sm[[i]]))  
+}
+
+colnames(columnas) <- c('No.Registro','No. Columnas') 
+
+if(length(str_split(estructura[1,3], '_')[[1]]) > max(columnas[,2])){
+  n <- length(str_split(estructura[1,3], '_')[[1]])
+}else if(length(str_split(estructura[1,3], '_')[[1]]) <= max(columnas[,2])){
+  n <- max(columnas[,2])
+}
+
+
+adname_sm <- data.frame(matrix(nrow = dim(base)[1], ncol = n))
+
+for (i in seq(length(a_sm)[1])) {
+  adname_sm[i,seq(length(a_sm[[i]]))] <- as.character(a_sm[[i]])
+}
+
+
+if(max(columnas[,2])>length(str_split(estructura[1,3], '_')[[1]])){
+  colnames(adname_sm) <- c(as.character(str_split(estructura[1,3], '_')[[1]]),rep('Variable MAL',max(columnas[,2])-length(str_split(estructura[1,3], '_')[[1]])))
+}else if(max(columnas[,2]) <= length(str_split(estructura[1,3], '_')[[1]])){
+  colnames(adname_sm) <- as.character(str_split(estructura[1,3], '_')[[1]])
+}
+
+adname_sm <- cbind(base[,1:2], adname_sm)
+
+eval_contenido <- data.frame(matrix(nrow = dim(adname_sm)[1], ncol = length(str_split(estructura[1,3], '_')[[1]])+1))
+colnames(eval_contenido) <- as.character(str_split(estructura[1,3], '_')[[1]])
+
+
+diccionario_ad <- data.frame(diccionario[grep(estructura[1,2], diccionario[,1]),c(2,5)])
+rownames(diccionario_ad) <- seq(dim(diccionario_ad)[1])
+
+
+
+for (i in 3:(length(str_split(estructura[1,3], '_')[[1]])+1)) {
+  validador <- cbind('Validador' = is.element(adname_sm[,i],diccionario_ad[grep(str_split(estructura[1,3],'_')[[1]][i-2],diccionario_ad[,1]),2]),'Registro' = seq(dim(adname_sm)[1]))
+  errores <- adname_sm[grep(0,validador[,1]),]
+  eval_contenido[grep(0,validador[,1]),(i-2)] <- 'MAL'
+  eval_contenido[grep(1,validador[,1]),(i-2)] <-'BIEN'
+}
+
+
+
+catalogo_fecha <- data.frame(matrix(nrow = length(seq(1:31)),ncol = 3))
+catalogo_fecha[c(1:9,10:31),1] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,31)))
+catalogo_fecha[c(1:9,10:12),2] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,12)))
+catalogo_fecha[,3] <-  as.character(seq(2016,2046))
+
+fecha <- data.frame(matrix(nrow = dim(adname_sm)[1],ncol = 13))
+fecha[,1] <- substring(adname_sm[,"Fecha de inicio"],1,2)
+fecha[,2] <- substring(adname_sm[,"Fecha de inicio"],3,3)
+fecha[,3] <- substring(adname_sm[,"Fecha de inicio"],4,5)
+fecha[,4] <- substring(adname_sm[,"Fecha de inicio"],6,6)
+fecha[,5] <- substring(adname_sm[,"Fecha de inicio"],7,10)
+fecha[,6] <- nchar(as.character(adname_sm[,"Fecha de inicio"]))
+fecha[,7] <- as.numeric(is.element(fecha[,1],catalogo_fecha[,1]))
+fecha[,8] <- as.numeric(is.element(fecha[,2],'-'))
+fecha[,9] <- as.numeric(is.element(fecha[,3],as.character(na.omit(catalogo_fecha[,2]))))
+fecha[,10] <- as.numeric(is.element(fecha[,4],'-'))
+fecha[,11] <- as.numeric(is.element(fecha[,5],as.character(na.omit(catalogo_fecha[,3]))))
+fecha[,12] <- apply(fecha[,7:11],1,sum)
+fecha <- cbind(adname_sm[,"Fecha de inicio"],fecha)
+colnames(fecha) <- c('Fecha','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación')
+colnames(eval_contenido) <- c(as.character(str_split(estructura[1,3], '_')[[1]]),'Resultado Contenido')
+
+
+for (i in seq(dim(fecha)[1])) {
+  if(fecha[i,7] == 10 && fecha[i,13] == 5){
+    fecha[i,14] <- 'BIEN'
+  }else if(fecha[i,7] != 10 || fecha[i,13] != 5){
+    fecha[i,14] <- 'MAL'
+  }
+}
+
+eval_contenido[,"Fecha de inicio"] <- fecha[,14]
+
+for (i in seq(dim(eval_contenido)[1])) {
+  if(length(grep('BIEN',eval_contenido[i,])) == length(str_split(estructura[1,3],'_')[[1]]) ){
+    eval_contenido[i,dim(eval_contenido)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido[i,])) != length(str_split(estructura[1,3],'_')[[1]]) && length(grep('BIEN',eval_contenido[i,])) !=0){
+    eval_contenido[i,dim(eval_contenido)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido)[grep('MAL',eval_contenido[i,])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido[i,])) ==0){
+    eval_contenido[i,dim(eval_contenido)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+if(max(columnas[,2])!=length(str_split(estructura[1,3], '_')[[1]]) || min(columnas[,2])!=length(str_split(estructura[1,3], '_')[[1]])){
+  error_estructura <- adname_sm[as.numeric(rownames(columnas)[columnas[,2]!=length(str_split(estructura[1,3], '_')[[1]])]),]
+}else if(max(columnas[,2])==length(str_split(estructura[1,3], '_')[[1]]) && min(columnas[,2])==length(str_split(estructura[1,3], '_')[[1]])){
+  error_estructura <- data.frame(matrix(nrow = 0, ncol = 1))
+}
+
+
+
+if(dim(error_estructura)[1]!=0){
+  for (i in seq(dim(error_estructura)[1])) {
+    if(eval_contenido[as.numeric(row.names(error_estructura))[i],dim(eval_contenido)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido[as.numeric(row.names(error_estructura))[i],dim(eval_contenido)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido[as.numeric(row.names(error_estructura))[i],dim(eval_contenido)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido[as.numeric(row.names(error_estructura))[i],dim(eval_contenido)[2]] <- paste(eval_contenido[as.numeric(row.names(error_estructura))[i],dim(eval_contenido)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura)[1]==0){
+  eval_contenido <- eval_contenido
+}
+
+adname_sm <- cbind.data.frame("Nombre del anuncio" = base[,3],adname_sm,eval_contenido)
+
+
+
+########### Verificamos la Taxónom??a para Conjunto de anuncios #################
+
+
+base <- gs_read(gs_title('Social Media'), ws = gs_ws_ls(ss = gs_title("Social Media"))[grep(mes,gs_ws_ls(ss = gs_title("Social Media")))])
+
+relaciones <- gs_read(gs_title("UNIVERSO Y AUDICIA PLANTILLA"), ws = gs_ws_ls(ss = gs_title("UNIVERSO Y AUDICIA PLANTILLA"))[1])
+relaciones <- data.frame(relaciones)
+
+
+base <- data.frame(unique(base[,c("Inicio del informe","Fin del informe","Nombre del conjunto de anuncios")]))
+
+rownames(base) <- seq(dim(base)[1])
+
+
+ca_sm <- str_split(base[,3], "_") 
+columnas_ca <- data.frame(matrix(ncol = 2,nrow = length(ca_sm)))
+
+for (i in seq(length(ca_sm))) {
+  columnas_ca[i,1:2] <- c(i,length(ca_sm[[i]]))  
+}
+
+colnames(columnas_ca) <- c('No.Registro','No. Columnas') 
+
+if(length(str_split(estructura[2,3], '_')[[1]]) > max(columnas_ca[,2])){
+  n <- length(str_split(estructura[2,3], '_')[[1]])
+}else if(length(str_split(estructura[2,3], '_')[[1]]) <= max(columnas_ca[,2])){
+  n <- max(columnas_ca[,2])
+}
+
+
+anuncios_sm <- data.frame(matrix(nrow = dim(base)[1], ncol = n))  
+
+for (i in seq(length(ca_sm)[1])) {
+  anuncios_sm[i,seq(length(ca_sm[[i]]))] <- as.character(ca_sm[[i]])
+}
+
+
+if(max(columnas_ca[,2])>length(str_split(estructura[2,3], '_')[[1]])){
+  colnames(anuncios_sm) <- c(as.character(str_split(estructura[2,3], '_')[[1]]),rep('Variable MAL',max(columnas_ca[,2])-length(str_split(estructura[2,3], '_')[[1]])))
+}else if(max(columnas_ca[,2]) <= length(str_split(estructura[2,3], '_')[[1]])){
+  colnames(anuncios_sm) <- as.character(str_split(estructura[2,3], '_')[[1]])
+}
+
+anuncios_sm <- cbind(base[,1:2], anuncios_sm)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_anuncios <- data.frame(matrix(nrow = dim(anuncios_sm)[1], ncol = 10))
+colnames(eval_contenido_anuncios) <- as.character(str_split(estructura[2,3], '_')[[1]])
+
+
+diccionario_ca <- diccionario[grep(estructura[2,2], diccionario[,1]),c(2,5)]
+rownames(diccionario_ca) <- seq(dim(diccionario_ca)[1])
+
+
+
+eval_relaciones_anuncios <- eval_contenido_anuncios
+
+
+for (i in 3:length(str_split(estructura[2,3], '_')[[1]])) {
+  validador <- cbind('Validador' = is.element(anuncios_sm[,i],diccionario_ca[grep(str_split(estructura[2,3],'_')[[1]][i-2],diccionario_ca[,1]),2]),'Registro' = seq(dim(anuncios_sm)[1]))
+  eval_contenido_anuncios[grep(0,validador[,1]),(i-2)] <- 'MAL'
+  eval_contenido_anuncios[grep(1,validador[,1]),(i-2)] <-'BIEN'
+}
+
+
+catalogo_fecha <- data.frame(matrix(nrow = length(seq(1:31)),ncol = 3))
+catalogo_fecha[c(1:9,10:31),1] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,31)))
+catalogo_fecha[c(1:9,10:12),2] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,12)))
+catalogo_fecha[,3] <-  as.character(seq(2016,2046))
+
+fecha_anuncios <- data.frame(matrix(nrow = dim(anuncios_sm)[1],ncol = 28))
+fecha_anuncios[,1] <- substring(anuncios_sm[,"Fecha de inicio"],1,2)
+fecha_anuncios[,2] <- substring(anuncios_sm[,"Fecha de inicio"],3,3)
+fecha_anuncios[,3] <- substring(anuncios_sm[,"Fecha de inicio"],4,5)
+fecha_anuncios[,4] <- substring(anuncios_sm[,"Fecha de inicio"],6,6)
+fecha_anuncios[,5] <- substring(anuncios_sm[,"Fecha de inicio"],7,10)
+fecha_anuncios[,6] <- nchar(as.character(anuncios_sm[,"Fecha de inicio"]))
+fecha_anuncios[,7] <- as.numeric(is.element(fecha_anuncios[,1],catalogo_fecha[,1]))
+fecha_anuncios[,8] <- as.numeric(is.element(fecha_anuncios[,2],'-'))
+fecha_anuncios[,9] <- as.numeric(is.element(fecha_anuncios[,3],as.character(na.omit(catalogo_fecha[,2]))))
+fecha_anuncios[,10] <- as.numeric(is.element(fecha_anuncios[,4],'-'))
+fecha_anuncios[,11] <- as.numeric(is.element(fecha_anuncios[,5],as.character(na.omit(catalogo_fecha[,3]))))
+fecha_anuncios[,12] <- apply(fecha_anuncios[,7:11],1,sum)
+
+fecha_anuncios[,14] <- anuncios_sm[,"Fecha de fin"]
+fecha_anuncios[,15] <- substring(anuncios_sm[,"Fecha de fin"],1,2)
+fecha_anuncios[,16] <- substring(anuncios_sm[,"Fecha de fin"],3,3)
+fecha_anuncios[,17] <- substring(anuncios_sm[,"Fecha de fin"],4,5)
+fecha_anuncios[,18] <- substring(anuncios_sm[,"Fecha de fin"],6,6)
+fecha_anuncios[,19] <- substring(anuncios_sm[,"Fecha de fin"],7,10)
+fecha_anuncios[,20] <- nchar(as.character(anuncios_sm[,"Fecha de fin"]))
+fecha_anuncios[,21] <- as.numeric(is.element(fecha_anuncios[,15],catalogo_fecha[,1]))
+fecha_anuncios[,22] <- as.numeric(is.element(fecha_anuncios[,16],'-'))
+fecha_anuncios[,23] <- as.numeric(is.element(fecha_anuncios[,17],as.character(na.omit(catalogo_fecha[,2]))))
+fecha_anuncios[,24] <- as.numeric(is.element(fecha_anuncios[,18],'-'))
+fecha_anuncios[,25] <- as.numeric(is.element(fecha_anuncios[,19],as.character(na.omit(catalogo_fecha[,3]))))
+fecha_anuncios[,26] <- apply(fecha_anuncios[,21:25],1,sum)
+
+fecha_anuncios <- cbind(anuncios_sm[,"Fecha de inicio"],fecha_anuncios)
+colnames(fecha_anuncios) <- c('Fecha Inicio','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación',
+                              'Fecha Fin','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación','Evaluación Final')
+colnames(eval_contenido_anuncios) <- c(as.character(str_split(estructura[2,3], '_')[[1]]),'Evaluación Final','Resultado Contenido')
+
+
+for (i in seq(dim(fecha_anuncios)[1])) {
+  if(fecha_anuncios[i,7] == 10 && fecha_anuncios[i,13] == 5){
+    fecha_anuncios[i,14] <- 'BIEN'
+  }else if(fecha_anuncios[i,7] != 10 || fecha_anuncios[i,13] != 5){
+    fecha_anuncios[i,14] <- 'MAL'
+  }
+}
+
+for (i in seq(dim(fecha_anuncios)[1])) {
+  if(fecha_anuncios[i,21] == 10 && fecha_anuncios[i,27] == 5){
+    fecha_anuncios[i,28] <- 'BIEN'
+  }else if(fecha_anuncios[i,21] != 10 || fecha_anuncios[i,27] != 5){
+    fecha_anuncios[i,28] <- 'MAL'
+  }
+}
+
+for (i in seq(dim(fecha_anuncios)[1])) {
+  if(length(grep('BIEN',fecha_anuncios[i,c(14,28)])) == 2 && as.numeric(paste(fecha_anuncios[i,c(6,4,2)], collapse = '/') <= paste(fecha_anuncios[i,c(20,18,16)], collapse = '/')) == 1){
+    fecha_anuncios[i,29] <- 'BIEN'
+  }else if(length(grep('BIEN',fecha_anuncios[i,c(14,28)])) != 2 && as.numeric(paste(fecha_anuncios[i,c(6,4,2)], collapse = '/') < paste(fecha_anuncios[i,c(20,18,16)], collapse = '/')) == 1 || length(grep('BIEN',fecha_anuncios[i,c(14,28)])) != 2 && as.numeric(paste(fecha_anuncios[i,c(6,4,2)], collapse = '/') < paste(fecha_anuncios[i,c(20,18,16)], collapse = '/')) != 1 || length(grep('BIEN',fecha_anuncios[i,c(14,28)])) != 2 && as.numeric(paste(fecha_anuncios[i,c(6,4,2)], collapse = '/') < paste(fecha_anuncios[i,c(20,18,16)], collapse = '/')) != 1){
+    fecha_anuncios[i,29] <- paste('MAL: ERROR EN ',toupper(colnames(fecha_anuncios[i,c(1,15)])[grep(1,as.numeric(is.element(fecha_anuncios[i,c(14,28)],'MAL')))]),collapse = '       ')
+  }else if(length(grep('BIEN',fecha_anuncios[i,c(14,28)])) == 2 && as.numeric(paste(fecha_anuncios[i,c(6,4,2)], collapse = '/') < paste(fecha_anuncios[i,c(20,18,16)], collapse = '/')) != 1)
+    fecha_anuncios[i,29] <- 'MAL: LA FECHA DE INICIO ES MAYOR QUE LA FINAL'
+}
+
+
+eval_contenido_anuncios[,c( "Fecha de inicio","Fecha de fin","Evaluación Final")] <- fecha_anuncios[,c(14,28,29)]
+
+variable <- c("Producto","Funnel","Audiencia")
+
+for (i in seq(unique(relaciones[,1]))) {
+  print(paste('valor de i es:',i))
+  subdata <- anuncios_sm[grep(unique(relaciones[,variable[1]])[i], anuncios_sm[,"Producto"]),]
+  modelo  <- relaciones[grep(unique(relaciones[,variable[1]])[i],relaciones[,variable[1]]),]
+  for (j in seq(dim(modelo)[1])) {
+    print(paste('valor de j es:',j))
+    if(sum(is.element(subdata[,'Audiencia'],modelo[,'Audiencia'][j])) == 0){
+      next(j)
+    }else if(sum(is.element(subdata[,'Audiencia'],modelo[,'Audiencia'][j])) != 0){
+      audiencia <- subdata[rownames(subdata)[is.element(subdata[,'Audiencia'],modelo[,'Audiencia'][j])],]
+     if(sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) == 0){
+        eval_relaciones_anuncios[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])]),'Audiencia'] <- paste('MAL: EL FUNNEL NO ES CORRECTO PARALA AUDIENCIA', modelo[,'Audiencia'][j], sep = ' ')
+      }else if(sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) == length(grep(modelo[,'Audiencia'][j],subdata[,'Audiencia']))){
+        eval_relaciones_anuncios[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])]),'Audiencia'] <- 'BIEN'
+      }else if(sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) < length(grep(modelo[,'Audiencia'][j],subdata[,'Audiencia'])) && sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) > 0){
+        eval_relaciones_anuncios[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])]),'Audiencia'] <- 'BIEN'
+        eval_relaciones_anuncios[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])==FALSE]),'Audiencia'] <- paste('MAL: EL FUNNEL NO ES CORRECTO PARALA AUDIENCIA', modelo[,'Audiencia'][j], sep = ' ')
+      }
+    }
+  }
+}
+
+
+
+eval_relaciones_anuncios[is.na(eval_relaciones_anuncios[,'Audiencia']),'Audiencia'] <- 'ERROR: LA AUDIENCIA ES INCORRECTA'
+
+
+for (i in seq(dim(eval_contenido_anuncios)[1])) {
+  if(length(grep('BIEN',eval_contenido_anuncios[i,1:8])) == length(str_split(estructura[2,3],'_')[[1]]) ){
+    eval_contenido_anuncios[i,dim(eval_contenido_anuncios)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_anuncios[i,1:8])) != length(str_split(estructura[2,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_anuncios[i,1:8])) !=0){
+    eval_contenido_anuncios[i,dim(eval_contenido_anuncios)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_anuncios)[grep('MAL',eval_contenido_anuncios[i,1:8])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_anuncios[i,1:8])) ==0){
+    eval_contenido_anuncios[i,dim(eval_contenido_anuncios)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+if(max(columnas_ca[,2])!=length(str_split(estructura[2,3], '_')[[1]]) || min(columnas_ca[,2])!=length(str_split(estructura[2,3], '_')[[1]])){
+  error_estructura_anuncios <- anuncios_sm[as.numeric(rownames(columnas_ca)[columnas_ca[,2]!=length(str_split(estructura[2,3], '_')[[1]])]),]
+}else if(max(columnas_ca[,2])==length(str_split(estructura[2,3], '_')[[1]]) && min(columnas_ca[,2])==length(str_split(estructura[2,3], '_')[[1]])){
+  error_estructura_anuncios <- data.frame(matrix(nrow = 0, ncol = 1))
+}
+
+
+
+if(dim(error_estructura_anuncios)[1]!=0){
+  for (i in seq(dim(error_estructura_anuncios)[1])) {
+    if(eval_contenido_anuncios[as.numeric(row.names(error_estructura_anuncios))[i],dim(eval_contenido_anuncios)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_anuncios[as.numeric(row.names(error_estructura_anuncios))[i],dim(eval_contenido_anuncios)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_anuncios[as.numeric(row.names(error_estructura_anuncios))[i],dim(eval_contenido_anuncios)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_anuncios[as.numeric(row.names(error_estructura_anuncios))[i],dim(eval_contenido_anuncios)[2]] <- paste(eval_contenido_anuncios[as.numeric(row.names(error_estructura_anuncios))[i],dim(eval_contenido_anuncios)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_anuncios)[1]==0){
+  eval_contenido_anuncios <- eval_contenido_anuncios
+}
+
+
+eval_final <- data.frame(matrix(nrow = dim(eval_contenido_anuncios)[1], ncol = 1))
+colnames(eval_final) <- 'Evaluacion Final'
+
+for (i in seq(dim(eval_relaciones_anuncios)[1])) {
+  if(eval_contenido_anuncios[i,"Resultado Contenido"] == "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_anuncios[i,'Audiencia'] == 'BIEN'){
+    eval_final[i,1] <- "CORRECTA ESTRUCTURA,CATALOGO Y RELACION"
+  }else if(eval_contenido_anuncios[i,"Resultado Contenido"] == "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_anuncios[i,'Audiencia'] != 'BIEN' || eval_contenido_anuncios[i,"Resultado Contenido"] != "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_anuncios[i,'Audiencia'] == 'BIEN' || eval_contenido_anuncios[i,"Resultado Contenido"] != "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_anuncios[i,'Audiencia'] != 'BIEN'){
+    eval_final[i,1] <- paste(eval_contenido_anuncios[i,"Resultado Contenido"],eval_relaciones_anuncios[i,'Audiencia'], sep = ' Y ')
+  }
+}
+
+
+anuncios_sm <- cbind.data.frame("Nombre del conjunto de anuncios" = base[,3],anuncios_sm,eval_contenido_anuncios,'Evaluación Relación Audiencia' = eval_relaciones_anuncios[,'Audiencia'],'Evaluación Final' = eval_final)
+
+
+############ Verificamos la campaña #######
+
+base <- gs_read(gs_title('Social Media'), ws = gs_ws_ls(ss = gs_title("Social Media"))[grep(mes,gs_ws_ls(ss = gs_title("Social Media")))])
+
+base <- data.frame(unique(base[,c(1,2,5)]))
+
+rownames(base) <- seq(dim(base)[1])
+
+cam_sm <- str_split(base[,3], "_") 
+columnas_cam <- data.frame(matrix(ncol = 2,nrow = length(cam_sm)))
+
+for (i in seq(length(cam_sm))) {
+  columnas_cam[i,1:2] <- c(i,length(cam_sm[[i]]))  
+}
+
+colnames(columnas_cam) <- c('No.Registro','No. Columnas') 
+
+if(length(str_split(estructura[3,3], '_')[[1]]) > max(columnas_cam[,2])){
+  n <- length(str_split(estructura[3,3], '_')[[1]])
+}else if(length(str_split(estructura[3,3], '_')[[1]]) <= max(columnas_cam[,2])){
+  n <- max(columnas_cam[,2])
+}
+
+
+campania_sm <- data.frame(matrix(nrow = dim(base)[1], ncol = n)) 
+
+for (i in seq(length(cam_sm)[1])) {
+  campania_sm[i,seq(length(cam_sm[[i]]))] <- as.character(cam_sm[[i]])
+}
+
+
+if(max(columnas_cam[,2])>length(str_split(estructura[3,3], '_')[[1]])){
+  colnames(campania_sm) <- c(as.character(str_split(estructura[3,3], '_')[[1]]),rep('Variable MAL',max(columnas_cam[,2])-length(str_split(estructura[3,3], '_')[[1]])))
+}else if(max(columnas_cam[,2]) <= length(str_split(estructura[3,3], '_')[[1]])){
+  colnames(campania_sm) <- as.character(str_split(estructura[3,3], '_')[[1]])
+}
+
+campania_sm <- cbind(base[,1:2], campania_sm)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_campania <- data.frame(matrix(nrow = dim(campania_sm)[1], ncol = 7))
+colnames(eval_contenido_campania) <- as.character(str_split(estructura[3,3], '_')[[1]])
+
+
+diccionario_cam <- diccionario[grep(estructura[3,2], diccionario[,1]),c(2,5)]
+rownames(diccionario_cam) <- seq(dim(diccionario_cam)[1])
+
+
+columnas <- grep(TRUE, cbind.data.frame(is.element(colnames(campania_sm),str_split(estructura[3,3],'_')[[1]][-grep("Fecha de inicio",str_split(estructura[3,3],'_')[[1]])][-grep("Fecha de fin",str_split(estructura[3,3],'_')[[1]][-grep("Fecha de inicio",str_split(estructura[3,3],'_')[[1]])])]), 
+                                        seq(is.element(colnames(campania_sm),str_split(estructura[3,3],'_')[[1]][-grep("Fecha de inicio",str_split(estructura[3,3],'_')[[1]])][-grep("Fecha de fin",str_split(estructura[3,3],'_')[[1]][-grep("Fecha de inicio",str_split(estructura[3,3],'_')[[1]])])])))[,1])
+
+
+for (i in columnas) {
+  if(i!=columnas[length(columnas)]){
+    validador <- cbind('Validador' = is.element(campania_sm[,i],diccionario_cam[grep(str_split(estructura[3,3],'_')[[1]][i-(length(columnas)-1)],diccionario_cam[,1]),2]),'Registro' = seq(dim(campania_sm)[1]))
+    eval_contenido_campania[grep(0,validador[,1]),(i-(length(columnas)-1))] <- 'MAL'
+    eval_contenido_campania[grep(1,validador[,1]),(i-(length(columnas)-1))] <-'BIEN' 
+  }else if(i==columnas[length(columnas)]){
+    validador <- cbind('Validador' = is.element(campania_sm[,i],diccionario_cam[grep(str_split(estructura[3,3],'_')[[1]][i-2],diccionario_cam[,1]),2]),'Registro' = seq(dim(campania_sm)[1]))
+    eval_contenido_campania[grep(0,validador[,1]),(i-(length(columnas)-1))] <- 'MAL'
+    eval_contenido_campania[grep(1,validador[,1]),(i-(length(columnas)-1))] <-'BIEN' 
+  }
+  
+}
+
+
+catalogo_fecha <- data.frame(matrix(nrow = length(seq(1:31)),ncol = 3))
+catalogo_fecha[c(1:9,10:31),1] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,31)))
+catalogo_fecha[c(1:9,10:12),2] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,12)))
+catalogo_fecha[,3] <-  as.character(seq(2016,2046))
+
+fecha_campania <- data.frame(matrix(nrow = dim(campania_sm)[1],ncol = 28))
+fecha_campania[,1] <- substring(campania_sm[,"Fecha de inicio"],1,2)
+fecha_campania[,2] <- substring(campania_sm[,"Fecha de inicio"],3,3)
+fecha_campania[,3] <- substring(campania_sm[,"Fecha de inicio"],4,5)
+fecha_campania[,4] <- substring(campania_sm[,"Fecha de inicio"],6,6)
+fecha_campania[,5] <- substring(campania_sm[,"Fecha de inicio"],7,10)
+fecha_campania[,6] <- nchar(as.character(campania_sm[,"Fecha de inicio"]))
+fecha_campania[,7] <- as.numeric(is.element(fecha_campania[,1],catalogo_fecha[,1]))
+fecha_campania[,8] <- as.numeric(is.element(fecha_campania[,2],'-'))
+fecha_campania[,9] <- as.numeric(is.element(fecha_campania[,3],as.character(na.omit(catalogo_fecha[,2]))))
+fecha_campania[,10] <- as.numeric(is.element(fecha_campania[,4],'-'))
+fecha_campania[,11] <- as.numeric(is.element(fecha_campania[,5],as.character(na.omit(catalogo_fecha[,3]))))
+fecha_campania[,12] <- apply(fecha_campania[,7:11],1,sum)
+
+fecha_campania[,14] <- campania_sm[,"Fecha de fin"]
+fecha_campania[,15] <- substring(campania_sm[,"Fecha de fin"],1,2)
+fecha_campania[,16] <- substring(campania_sm[,"Fecha de fin"],3,3)
+fecha_campania[,17] <- substring(campania_sm[,"Fecha de fin"],4,5)
+fecha_campania[,18] <- substring(campania_sm[,"Fecha de fin"],6,6)
+fecha_campania[,19] <- substring(campania_sm[,"Fecha de fin"],7,10)
+fecha_campania[,20] <- nchar(as.character(campania_sm[,"Fecha de fin"]))
+fecha_campania[,21] <- as.numeric(is.element(fecha_campania[,15],catalogo_fecha[,1]))
+fecha_campania[,22] <- as.numeric(is.element(fecha_campania[,16],'-'))
+fecha_campania[,23] <- as.numeric(is.element(fecha_campania[,17],as.character(na.omit(catalogo_fecha[,2]))))
+fecha_campania[,24] <- as.numeric(is.element(fecha_campania[,18],'-'))
+fecha_campania[,25] <- as.numeric(is.element(fecha_campania[,19],as.character(na.omit(catalogo_fecha[,3]))))
+fecha_campania[,26] <- apply(fecha_campania[,21:25],1,sum)
+
+
+fecha_campania <- cbind(campania_sm[,"Fecha de inicio"],fecha_campania)
+
+colnames(fecha_campania) <- c('Fecha Inicio','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación',
+                              'Fecha Fin','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación','Evaluación Final')
+colnames(eval_contenido_campania) <- c(as.character(str_split(estructura[3,3], '_')[[1]]),'Evaluación Final','Resultado Contenido')
+
+
+for (i in seq(dim(fecha_campania)[1])) {
+  if(fecha_campania[i,7] == 10 && fecha_campania[i,13] == 5){
+    fecha_campania[i,14] <- 'BIEN'
+  }else if(fecha_campania[i,7] != 10 || fecha_campania[i,13] != 5){
+    fecha_campania[i,14] <- 'MAL'
+  }
+}
+
+for (i in seq(dim(fecha_campania)[1])) {
+  if(fecha_campania[i,21] == 10 && fecha_campania[i,27] == 5){
+    fecha_campania[i,28] <- 'BIEN'
+  }else if(fecha_campania[i,21] != 10 || fecha_campania[i,27] != 5){
+    fecha_campania[i,28] <- 'MAL'
+  }
+}
+
+for (i in seq(dim(fecha_campania)[1])) {
+  if(length(grep('BIEN',fecha_campania[i,c(14,28)])) == 2 && as.numeric(paste(fecha_campania[i,c(6,4,2)], collapse = '/') <= paste(fecha_campania[i,c(20,18,16)], collapse = '/')) == 1){
+    fecha_campania[i,29] <- 'BIEN'
+  }else if(length(grep('BIEN',fecha_campania[i,c(14,28)])) != 2 && as.numeric(paste(fecha_campania[i,c(6,4,2)], collapse = '/') < paste(fecha_campania[i,c(20,18,16)], collapse = '/')) == 1 || length(grep('BIEN',fecha_campania[i,c(14,28)])) != 2 && as.numeric(paste(fecha_campania[i,c(6,4,2)], collapse = '/') < paste(fecha_campania[i,c(20,18,16)], collapse = '/')) != 1 || length(grep('BIEN',fecha_campania[i,c(14,28)])) != 2 && as.numeric(paste(fecha_campania[i,c(6,4,2)], collapse = '/') < paste(fecha_campania[i,c(20,18,16)], collapse = '/')) != 1){
+    fecha_campania[i,29] <- paste('MAL: ERROR EN ',toupper(colnames(fecha_campania[i,c(1,15)])[grep(1,as.numeric(is.element(fecha_campania[i,c(14,28)],'MAL')))]),collapse = '       ')
+  }else if(length(grep('BIEN',fecha_campania[i,c(14,28)])) == 2 && as.numeric(paste(fecha_campania[i,c(6,4,2)], collapse = '/') < paste(fecha_campania[i,c(20,18,16)], collapse = '/')) != 1)
+    fecha_campania[i,29] <- 'MAL: LA FECHA DE INICIO ES MAYOR QUE LA FINAL'
+}
+
+
+
+eval_contenido_campania[,c( "Fecha de inicio","Fecha de fin","Evaluación Final")] <- fecha_campania[,c(14,28,29)]
+
+for (i in seq(dim(eval_contenido_campania)[1])) {
+  if(length(grep('BIEN',eval_contenido_campania[i,seq(length(str_split(estructura[3,3],'_')[[1]]))])) == length(str_split(estructura[3,3],'_')[[1]])){
+    eval_contenido_campania[i,dim(eval_contenido_campania)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_campania[i,seq(length(str_split(estructura[3,3],'_')[[1]]))])) != length(str_split(estructura[3,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_campania[i,seq(length(str_split(estructura[3,3],'_')[[1]]))])) !=0){
+    eval_contenido_campania[i,dim(eval_contenido_campania)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_campania)[grep('MAL',eval_contenido_campania[i,seq(length(str_split(estructura[3,3],'_')[[1]]))])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_campania[i,seq(length(str_split(estructura[3,3],'_')[[1]]))])) == 0){
+    eval_contenido_campania[i,dim(eval_contenido_campania)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+if(max(columnas_cam[,2])!= length(str_split(estructura[3,3], '_')[[1]]) || min(columnas_cam[,2])!=length(str_split(estructura[3,3], '_')[[1]])){
+  error_estructura_campania <- campania_sm[as.numeric(rownames(columnas_cam)[columnas_cam[,2]!=length(str_split(estructura[3,3], '_')[[1]])]),]
+}else if(max(columnas_cam[,2])==length(str_split(estructura[3,3], '_')[[1]]) && min(columnas_cam[,2])==length(str_split(estructura[3,3], '_')[[1]])){
+  error_estructura_campania <- data.frame(matrix(nrow = 0, ncol = 1))
+}
+
+
+
+if(dim(error_estructura_campania)[1]!=0){
+  for (i in seq(dim(error_estructura_campania)[1])) {
+    if(eval_contenido_campania[as.numeric(row.names(error_estructura_campania))[i],dim(eval_contenido_campania)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_campania[as.numeric(row.names(error_estructura_campania))[i],dim(eval_contenido_campania)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_campania[as.numeric(row.names(error_estructura_campania))[i],dim(eval_contenido_campania)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_campania[as.numeric(row.names(error_estructura_campania))[i],dim(eval_contenido_campania)[2]] <- paste(eval_contenido_campania[as.numeric(row.names(error_estructura_campania))[i],dim(eval_contenido_campania)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_campania)[1]==0){
+  eval_contenido_campania <- eval_contenido_campania
+}
+
+campania_sm <- cbind.data.frame("Nombre de la campaña" = base[,3],campania_sm,eval_contenido_campania)
+
+
+
+########### Creacion de archivos RD ########
+
+sm_hist_adname <- cbind.data.frame('Fecha' = mes, adname_sm[,seq(3 + length(str_split(estructura[1,3],'_')[[1]]))] )
+resultados_adname <- data.frame(matrix(nrow = dim(sm_hist_adname)[1], ncol = 1))
+resultados_adname[grep('ERROR',adname_sm[,dim(adname_sm)[2]]),1] <-'MAL'
+resultados_adname[is.na(resultados_adname[,1]),1] <- 'BIEN'
+colnames(resultados_adname) <- 'Resultados'
+sm_hist_adname <- cbind.data.frame(sm_hist_adname,resultados_adname)
+
+save(sm_hist_adname,file = paste(getwd(),'/Nissan_Social_Media_Conjunto_de_Anuncios_',mes,'.rda', sep = ''))
+
+sm_hist_anuncios <- cbind.data.frame('Fecha' = mes, anuncios_sm[,seq(3 + length(str_split(estructura[2,3],'_')[[1]]))] )
+resultados_anuncios <- data.frame(matrix(nrow = dim(sm_hist_anuncios)[1], ncol = 1))
+resultados_anuncios[grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]]),1] <-'MAL'
+resultados_anuncios[is.na(resultados_anuncios[,1]),1] <- 'BIEN'
+colnames(resultados_anuncios) <- 'Resultados'
+sm_hist_anuncios <- cbind.data.frame(sm_hist_anuncios,resultados_anuncios)
+
+save(sm_hist_anuncios,file = paste(getwd(),'/Nissan_Social_Media_Anuncios_',mes,'.rda', sep = ''))
+
+sm_hist_campania <- cbind.data.frame('Fecha' = mes, campania_sm[,seq(3 + length(str_split(estructura[3,3],'_')[[1]]))] )
+resultados_campania <- data.frame(matrix(nrow = dim(sm_hist_campania)[1], ncol = 1))
+resultados_campania[grep('ERROR',campania_sm[,dim(campania_sm)[2]]),1] <-'MAL'
+resultados_campania[is.na(resultados_campania[,1]),1] <- 'BIEN'
+colnames(resultados_campania) <- 'Resultados'
+sm_hist_campania <- cbind.data.frame(sm_hist_campania,resultados_campania)
+
+save(sm_hist_campania,file = paste(getwd(),'/Nissan_Social_Media_Campaña_',mes,'.rda',sep = ''))
+
+
+
+############ Resumen Total Soccial Media #########
+
+
+
+resumen <- data.frame(matrix(ncol = 6, nrow = 3))
+
+
+resumen[1,1] <- 'Campaña'
+resumen[1,2:6] <- c(dim(campania_sm)[1]-length(grep('ERROR',campania_sm[,dim(campania_sm)[2]])),
+                    length(grep('ERROR',campania_sm[,dim(campania_sm)[2]])),
+                    dim(campania_sm)[1],
+                    as.character(paste(round((dim(campania_sm)[1]-length(grep('ERROR',campania_sm[,dim(campania_sm)[2]])))/dim(campania_sm)[1]*100,2),'%')),
+                    as.character(paste(round((length(grep('ERROR',campania_sm[,dim(campania_sm)[2]]))/dim(campania_sm)[1])*100,2),'%')))
+
+if(length(grep('ERROR',campania_sm[,dim(campania_sm)[2]])) != 0){
+  error_campania <- campania_sm[grep('ERROR',campania_sm[,dim(campania_sm)[2]]),]
+}else if(length(grep('ERROR',campania_sm[,dim(campania_sm)[2]])) == 0){
+  error_campania <- 'No hay Errores'
+}
+
+
+resumen[2,1] <- 'Conjunto de Anuncios'
+resumen[2,2:6] <- c(dim(anuncios_sm)[1]-length(grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]])),
+                    length(grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]])),
+                    dim(anuncios_sm)[1],
+                    as.character(paste(round((dim(anuncios_sm)[1]-length(grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]])))/dim(anuncios_sm)[1]*100,2),'%')),
+                    as.character(paste(round((length(grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]]))/dim(anuncios_sm)[1])*100,2),'%')))
+
+
+if(length(grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]])) != 0){
+  error_anuncios <- anuncios_sm[grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]]),]
+}else if(length(grep('ERROR',anuncios_sm[,dim(anuncios_sm)[2]])) == 0){
+  error_anuncios <- 'No hay Errores'
+}
+
+
+
+resumen[3,1] <- 'Anuncios'
+colnames(resumen) <- c('Sección','Bien Formada','Mal Formada','Total','% Bien Formada','% Mal Formada')
+resumen[3,2:6] <- c(dim(adname_sm)[1]-length(grep('ERROR',adname_sm[,dim(adname_sm)[2]])),
+                    length(grep('ERROR',adname_sm[,dim(adname_sm)[2]])),
+                    dim(adname_sm)[1],
+                    as.character(paste(round((dim(adname_sm)[1]-length(grep('ERROR',adname_sm[,dim(adname_sm)[2]])))/dim(adname_sm)[1]*100,2),'%')),
+                    as.character(paste(round((length(grep('ERROR',adname_sm[,dim(adname_sm)[2]]))/dim(adname_sm)[1])*100,2),'%')))
+
+if(length(grep('ERROR',adname_sm[,dim(adname_sm)[2]])) != 0){
+  error_adname <- adname_sm[grep('ERROR',adname_sm[,dim(adname_sm)[2]]),]
+}else if(length(grep('ERROR',adname_sm[,dim(adname_sm)[2]])) == 0){
+  error_adname <- 'No hay Errores'
+}
+
+
+imagen <- data.frame(
+  Status = factor(c('Bien Formada','Mal Formada')),
+  Fuente = factor(c('Campaña','Campaña','Conjunto de Anuncios','Conjunto de Anuncios','Anuncios','Anuncios'), levels = c('Campaña','Conjunto de Anuncios','Anuncios')),
+  Registros = c(as.numeric(resumen[1,2:3]),as.numeric(resumen[2,2:3]),as.numeric(resumen[3,2:3]))
+)
+
+
+if(class(error_adname) != "character"){
+  type_mistake_adname <- cbind.data.frame(error_adname[dim(error_adname)[2]],'Valor' = as.numeric(1))
+  type_mistake_adname <- as.data.frame(type_mistake_adname %>% group_by( type_mistake_adname[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_adname <- cbind.data.frame(type_mistake_adname[,1],'Anuncios',type_mistake_adname[,2])
+  colnames(type_mistake_adname) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_adname <- arrange(type_mistake_adname,Contador)
+}else if(class(error_adname) == "character"){
+  type_mistake_adname <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",adname_sm[,dim(adname_sm)[2]]))))
+  type_mistake_adname <- cbind.data.frame(type_mistake_adname[,1],'Anuncios',type_mistake_adname[,2])
+  colnames(type_mistake_adname) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+if(class(error_anuncios) != "character"){
+  type_mistake_anuncios <- cbind.data.frame(error_anuncios[dim(error_anuncios)[2]],'Valor' = as.numeric(1))
+  type_mistake_anuncios <- as.data.frame(type_mistake_anuncios %>% group_by( type_mistake_anuncios[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_anuncios <- cbind.data.frame(type_mistake_anuncios[,1],'Conjunto de Anuncios',type_mistake_anuncios[,2])
+  colnames(type_mistake_anuncios) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_anuncios <- arrange(type_mistake_anuncios,Contador)
+}else if(class(error_anuncios) == "character"){
+  type_mistake_anuncios <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",anuncios_sm[,dim(anuncios_sm)[2]]))))
+  type_mistake_anuncios <- cbind.data.frame(type_mistake_anuncios[,1],'Conjunto de Anuncios',type_mistake_anuncios[,2])
+  colnames(type_mistake_anuncios) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+if(class(error_campania) != "character"){
+  type_mistake_campania <- cbind.data.frame(error_campania[dim(error_campania)[2]],'Valor' = as.numeric(1))
+  type_mistake_campania <- as.data.frame(type_mistake_campania %>% group_by( type_mistake_campania[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_campania <- cbind.data.frame(type_mistake_campania[,1],'Campaña',type_mistake_campania[,2])
+  colnames(type_mistake_campania) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_campania <- arrange(type_mistake_campania,Contador)
+}else if(class(error_campania) == "character"){
+  type_mistake_campania <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",campania_sm[,dim(campania_sm)[2]]))))
+  type_mistake_campania <- cbind.data.frame(type_mistake_campania[,1],'Campaña',type_mistake_campania[,2])
+  colnames(type_mistake_campania) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+tipo_errores_social <- rbind.data.frame(type_mistake_adname,type_mistake_anuncios,type_mistake_campania) 
+
+
+error <- data.frame(
+  Resultado_Contenido = factor(tipo_errores_social[,1]),
+  Seccion = factor(tipo_errores_social[,2], levels = as.character(unique(tipo_errores_social[,2]))),
+  Contador = tipo_errores_social[,3] 
+)
+
+drive_auth()
+
+drive_rm(paste("~/Nissan/Social Media/",mes,sep = ''))
+
+drive_mkdir(paste("~/Nissan/Social Media/",mes,sep = ''))
+
+write.csv(resumen, file = paste(ruta,'/Nissan_Social_Media_Resumen.csv',sep = ''), row.names = F)
+
+write.csv(adname_sm, file =  paste('Nissan_Social_Media_Anuncios.csv',sep = ''), row.names = F)
+
+drive_upload(paste(ruta,'/Nissan_Social_Media_Anuncios.csv',sep = ''),path =  as_dribble(paste('~/Nissan/Social Media/',mes,sep = '')), type = 'spreadsheet')
+
+write.csv(anuncios_sm, file = paste('Nissan_Social_Media_Conjunto_de_Anuncios.csv',sep = ''), row.names = F)
+
+drive_upload(paste('Nissan_Social_Media_Conjunto_de_Anuncios.csv',sep = ''),path =  as_dribble(paste('~/Nissan/Social Media/',mes,sep = '')), type = 'spreadsheet')
+
+write.csv(campania_sm, file = paste(ruta,'/Nissan_Social_Media_Campania.csv',sep = ''), row.names = F)
+
+drive_upload(paste('Nissan_Social_Media_Campania.csv',sep = ''),path =  as_dribble(paste('~/Nissan/Social Media/',mes,sep = '')), type = 'spreadsheet')
+
+
+########## Tablas con Kable #######
+
+
+resumen <- kable(resumen,format = 'html',longtable = TRUE, caption = NULL,
+                 booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "blue")
+
+
+error_campania <- kable(error_campania,format = 'html',longtable = TRUE, caption = NULL,
+                        booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "blue")
+
+
+error_anuncios <-  kable(error_anuncios,format = 'html',longtable = TRUE, caption = NULL,
+                         booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "blue")
+
+
+error_adname <- kable(error_adname,format = 'html',longtable = TRUE, caption = NULL,
+                      booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "blue")
+
+
+
+
+####### Gráfica
+
+
+p <- ggplot(data=imagen, aes(x=Fuente, y=Registros, fill=Status)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black") +
+  scale_fill_manual(values=c("green", "red"))
+
+p <- ggplotly(p)
+
+
+
+q <- ggplot(data=error, aes(x=Seccion, y=Contador, fill=Resultado_Contenido)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black")
+
+q <- ggplotly(q)
+
+
+
+
+error <- kable(error,format = 'html',longtable = TRUE, caption = NULL,
+                      booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "blue")
+
+
+
+
+
+
+
+#########################################################################################################
+
+################################################### DCM ################################################
+
+
+#########################################################################################################
+
+########################## CAMPAÑA #####################
+
+
+ruta <- paste("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/DCM/",mes,sep = '')
+
+setwd(paste("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/DCM/",mes, sep = ''))
+
+
+fuentes_dcm <- data.frame(fuentes[grep('DCM', toupper(fuentes[,1])),])
+fuentes_dcm <- fuentes_dcm[c(grep('campaign',fuentes_dcm[,1]),grep('creative',fuentes_dcm[,1]),grep('Placement',fuentes_dcm[,1]),grep('ad name',fuentes_dcm[,1])),]
+
+estructura_dcm <- data.frame(matrix(nrow = 4,ncol = 3))
+
+estructura_dcm[,2:3] <- fuentes_dcm
+
+
+catalogo_eliminar <- data.frame(read_excel("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx", sheet = excel_sheets("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx")[1]))
+campania <- data.frame(catalogo_eliminar[12:20,7])
+campania <- campania[-1,]
+row.names(campania) <- dim(campania)[1]
+campania <- data.frame(as.character(campania))
+colnames(campania) <- 'Campaign'
+
+base_dcm <- gs_read(gs_title('DATA DCM'), ws = gs_ws_ls(ss = gs_title("DATA DCM"))[grep(mes,gs_ws_ls(ss = gs_title("DATA DCM")))])
+colnames(base_dcm) <- base_dcm[10,]
+base_dcm <- base_dcm[-c(1:10),]
+base_dcm <- data.frame(base_dcm[,"Campaign"])
+base_dcm <- data.frame(unique(base_dcm[,1]))
+if(length(grep('DCO',base_dcm[,1])) != 0){
+  base_dcm <- data.frame(base_dcm[-grep('DCO',base_dcm[,1]),]) 
+}else if(length(grep('DCO',base_dcm[,1])) == 0){
+  base_dcm <- base_dcm
+}
+
+
+
+rownames(base_dcm) <- seq(dim(base_dcm)[1])
+colnames(base_dcm) <- "Campaign"
+
+
+cam_dcm <- str_split(base_dcm[,"Campaign"], "_") 
+columnas_cam_dcm <- data.frame(matrix(ncol = 2,nrow = length(cam_dcm)))
+
+for (i in seq(length(cam_dcm))) {
+  columnas_cam_dcm[i,1:2] <- c(i,length(cam_dcm[[i]]))  
+}
+
+colnames(columnas_cam_dcm) <- c('No.Registro','No. Columnas') 
+
+
+if(length(str_split(estructura_dcm[1,3], '_')[[1]]) > max(columnas_cam_dcm[,2])){
+  n <- length(str_split(estructura_dcm[1,3], '_')[[1]])
+}else if(length(str_split(estructura_dcm[1,3], '_')[[1]]) <= max(columnas_cam_dcm[,2])){
+  n <- max(columnas_cam_dcm[,2])
+} 
+
+
+campania_dcm <- data.frame(matrix(nrow = dim(base_dcm)[1], ncol = n)) 
+
+for (i in seq(length(cam_dcm)[1])) {
+  campania_dcm[i,seq(length(cam_dcm[[i]]))] <- as.character(cam_dcm[[i]])
+}
+
+
+if(max(columnas_cam_dcm[,2])>length(str_split(estructura_dcm[1,3], '_')[[1]])){
+  colnames(campania_dcm) <- c(as.character(str_split(estructura_dcm[1,3], '_')[[1]]),rep('Variable MAL',max(columnas_cam_dcm[,2])-length(str_split(estructura_dcm[1,3], '_')[[1]])))
+}else if(max(columnas_cam_dcm[,2]) <= length(str_split(estructura_dcm[1,3], '_')[[1]])){
+  colnames(campania_dcm) <- as.character(str_split(estructura_dcm[1,3], '_')[[1]])
+}
+
+campania_dcm <- cbind(base_dcm[,"Campaign"], campania_dcm)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_campania_dcm <- data.frame(matrix(nrow = dim(campania_dcm)[1], ncol = length(str_split(estructura_dcm[1,3], '_')[[1]])+1))
+colnames(eval_contenido_campania_dcm) <- as.character(str_split(estructura_dcm[1,3], '_')[[1]])
+
+
+
+diccionario_cam_dcm <- data.frame(diccionario[grep(estructura_dcm[1,2], diccionario[,1]),c(2,dim(diccionario)[2])])
+rownames(diccionario_cam_dcm) <- seq(dim(diccionario_cam_dcm)[1])
+
+
+for (i in 2:(length(str_split(estructura_dcm[1,3], '_')[[1]])-1)) {
+  validador <- cbind('Validador' = is.element(campania_dcm[,i],diccionario_cam_dcm[grep(str_split(estructura_dcm[1,3],'_')[[1]][i-1],diccionario_cam_dcm[,1]),2]),'Registro' = seq(dim(campania_dcm)[1]))
+  eval_contenido_campania_dcm[grep(0,validador[,1]),(i-1)] <- 'MAL'
+  eval_contenido_campania_dcm[grep(1,validador[,1]),(i-1)] <-'BIEN' 
+}
+
+
+catalogo_fecha <- data.frame(matrix(nrow = length(seq(1:31)),ncol = 3))
+catalogo_fecha[c(1:9,10:31),1] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,31)))
+catalogo_fecha[c(1:9,10:12),2] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,12)))
+catalogo_fecha[,3] <-  as.character(seq(2016,2046))
+
+fecha_campania_dcm <- data.frame(matrix(nrow = dim(campania_dcm)[1],ncol = 28))
+fecha_campania_dcm[,1] <- substring(campania_dcm[,"Fecha de inicio"],1,2)
+fecha_campania_dcm[,2] <- substring(campania_dcm[,"Fecha de inicio"],3,3)
+fecha_campania_dcm[,3] <- substring(campania_dcm[,"Fecha de inicio"],4,5)
+fecha_campania_dcm[,4] <- substring(campania_dcm[,"Fecha de inicio"],6,6)
+fecha_campania_dcm[,5] <- substring(campania_dcm[,"Fecha de inicio"],7,10)
+fecha_campania_dcm[,6] <- nchar(as.character(campania_dcm[,"Fecha de inicio"]))
+fecha_campania_dcm[,7] <- as.numeric(is.element(fecha_campania_dcm[,1],catalogo_fecha[,1]))
+fecha_campania_dcm[,8] <- as.numeric(is.element(fecha_campania_dcm[,2],'-'))
+fecha_campania_dcm[,9] <- as.numeric(is.element(fecha_campania_dcm[,3],as.character(na.omit(catalogo_fecha[,2]))))
+fecha_campania_dcm[,10] <- as.numeric(is.element(fecha_campania_dcm[,4],'-'))
+fecha_campania_dcm[,11] <- as.numeric(is.element(fecha_campania_dcm[,5],as.character(na.omit(catalogo_fecha[,3]))))
+fecha_campania_dcm[,12] <- apply(fecha_campania_dcm[,7:11],1,sum)
+
+fecha_campania_dcm[,14] <- campania_dcm[,"Fecha de fin"]
+fecha_campania_dcm[,15] <- substring(campania_dcm[,"Fecha de fin"],1,2)
+fecha_campania_dcm[,16] <- substring(campania_dcm[,"Fecha de fin"],3,3)
+fecha_campania_dcm[,17] <- substring(campania_dcm[,"Fecha de fin"],4,5)
+fecha_campania_dcm[,18] <- substring(campania_dcm[,"Fecha de fin"],6,6)
+fecha_campania_dcm[,19] <- substring(campania_dcm[,"Fecha de fin"],7,10)
+fecha_campania_dcm[,20] <- nchar(as.character(campania_dcm[,"Fecha de fin"]))
+fecha_campania_dcm[,21] <- as.numeric(is.element(fecha_campania_dcm[,15],catalogo_fecha[,1]))
+fecha_campania_dcm[,22] <- as.numeric(is.element(fecha_campania_dcm[,16],'-'))
+fecha_campania_dcm[,23] <- as.numeric(is.element(fecha_campania_dcm[,17],as.character(na.omit(catalogo_fecha[,2]))))
+fecha_campania_dcm[,24] <- as.numeric(is.element(fecha_campania_dcm[,18],'-'))
+fecha_campania_dcm[,25] <- as.numeric(is.element(fecha_campania_dcm[,19],as.character(na.omit(catalogo_fecha[,3]))))
+fecha_campania_dcm[,26] <- apply(fecha_campania_dcm[,21:25],1,sum)
+
+fecha_campania_dcm <- cbind(campania_dcm[,"Fecha de inicio"],fecha_campania_dcm)
+colnames(fecha_campania_dcm) <- c('Fecha Inicio','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación',
+                                  'Fecha Fin','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación','Evaluación Final')
+
+
+for (i in seq(dim(fecha_campania_dcm)[1])) {
+  if(fecha_campania_dcm[i,7] == 10 && fecha_campania_dcm[i,13] == 5){
+    fecha_campania_dcm[i,14] <- 'BIEN'
+  }else if(fecha_campania_dcm[i,7] != 10 || fecha_campania_dcm[i,13] != 5){
+    fecha_campania_dcm[i,14] <- 'MAL'
+  }
+}
+
+for (i in seq(dim(fecha_campania_dcm)[1])) {
+  if(fecha_campania_dcm[i,21] == 10 && fecha_campania_dcm[i,27] == 5){
+    fecha_campania_dcm[i,28] <- 'BIEN'
+  }else if(fecha_campania_dcm[i,21] != 10 || fecha_campania_dcm[i,27] != 5){
+    fecha_campania_dcm[i,28] <- 'MAL'
+  }
+}
+
+
+
+for (i in seq(dim(fecha_campania_dcm)[1])) {
+  if(length(grep('BIEN',fecha_campania_dcm[i,c(14,28)])) == 2 && as.numeric(paste(fecha_campania_dcm[i,c(6,4,2)], collapse = '/') <= paste(fecha_campania_dcm[i,c(20,18,16)], collapse = '/')) == 1){
+    fecha_campania_dcm[i,29] <- 'BIEN'
+  }else if(length(grep('BIEN',fecha_campania_dcm[i,c(14,28)])) != 2 && as.numeric(paste(fecha_campania_dcm[i,c(6,4,2)], collapse = '/') < paste(fecha_campania_dcm[i,c(20,18,16)], collapse = '/')) == 1 || length(grep('BIEN',fecha_campania_dcm[i,c(14,28)])) != 2 && as.numeric(paste(fecha_campania_dcm[i,c(6,4,2)], collapse = '/') < paste(fecha_campania_dcm[i,c(20,18,16)], collapse = '/')) != 1 || length(grep('BIEN',fecha_campania_dcm[i,c(14,28)])) != 2 && as.numeric(paste(fecha_campania_dcm[i,c(6,4,2)], collapse = '/') < paste(fecha_campania_dcm[i,c(20,18,16)], collapse = '/')) != 1){
+    fecha_campania_dcm[i,29] <- paste('MAL: ERROR EN ',toupper(colnames(fecha_campania_dcm[i,c(1,15)])[grep(1,as.numeric(is.element(fecha_campania_dcm[i,c(14,28)],'MAL')))]),collapse = '       ')
+  }else if(length(grep('BIEN',fecha_campania_dcm[i,c(14,28)])) == 2 && as.numeric(paste(fecha_campania_dcm[i,c(6,4,2)], collapse = '/') < paste(fecha_campania_dcm[i,c(20,18,16)], collapse = '/')) != 1)
+    fecha_campania_dcm[i,29] <- 'MAL: LA FECHA DE INICIO ES MAYOR QUE LA FINAL'
+}
+
+
+
+eval_contenido_campania_dcm[,c(5,6,7)] <- fecha_campania_dcm[,c(14,28,29)]
+
+
+
+for (i in seq(dim(eval_contenido_campania_dcm)[1])) {
+  if(length(grep('BIEN',eval_contenido_campania_dcm[i,1:length(str_split(estructura_dcm[1,3], '_')[[1]])])) == length(str_split(estructura_dcm[1,3], '_')[[1]]) ){
+    eval_contenido_campania_dcm[i,dim(eval_contenido_campania_dcm)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_campania_dcm[i,1:length(str_split(estructura_dcm[1,3], '_')[[1]])])) != length(str_split(estructura_dcm[1,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_campania_dcm[i,1:length(str_split(estructura_dcm[1,3], '_')[[1]])])) !=0){
+    eval_contenido_campania_dcm[i,dim(eval_contenido_campania_dcm)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_campania_dcm)[grep('MAL',eval_contenido_campania_dcm[i,1:6])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_campania_dcm[i,1:length(str_split(estructura_dcm[1,3], '_')[[1]])])) ==0){
+    eval_contenido_campania_dcm[i,dim(eval_contenido_campania_dcm)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+if(max(columnas_cam_dcm[,2])!= length(str_split(estructura_dcm[1,3], '_')[[1]]) || min(columnas_cam_dcm[,2])!=length(str_split(estructura_dcm[1,3], '_')[[1]])){
+  error_estructura_campania_dcm <- campania_dcm[as.numeric(rownames(columnas_cam_dcm)[columnas_cam_dcm[,2]!=length(str_split(estructura_dcm[1,3], '_')[[1]])]),]
+}else if(max(columnas_cam_dcm[,2])==length(str_split(estructura_dcm[1,3], '_')[[1]]) && min(columnas_cam_dcm[,2])==length(str_split(estructura_dcm[1,3], '_')[[1]])){
+  error_estructura_campania_dcm <- data.frame(matrix(nrow = 0, ncol = dim(eval_contenido_campania_dcm)[2]))
+}
+
+
+if(dim(error_estructura_campania_dcm)[1]!=0){
+  for (i in seq(dim(error_estructura_campania_dcm)[1])) {
+    if(eval_contenido_campania_dcm[as.numeric(row.names(error_estructura_campania_dcm))[i],dim(eval_contenido_campania_dcm)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_campania_dcm[as.numeric(row.names(error_estructura_campania_dcm))[i],dim(eval_contenido_campania_dcm)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_campania_dcm[as.numeric(row.names(error_estructura_campania_dcm))[i],dim(eval_contenido_campania_dcm)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_campania_dcm[as.numeric(row.names(error_estructura_campania_dcm))[i],dim(eval_contenido_campania_dcm)[2]] <- paste(eval_contenido_campania_dcm[as.numeric(row.names(error_estructura_campania_dcm))[i],dim(eval_contenido_campania_dcm)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_campania_dcm)[1]==0){
+  eval_contenido_campania_dcm <- eval_contenido_campania_dcm
+}
+
+
+campania_dcm <- cbind(campania_dcm,eval_contenido_campania_dcm)
+
+colnames(campania_dcm) <- c(colnames(base_dcm)[is.element(colnames(base_dcm),"Campaign" )],colnames(campania_dcm)[2:(dim(campania_dcm)[2]-1)],'Evaluación')
+
+colnames(error_estructura_campania_dcm) <- colnames(campania_dcm)[1:7]
+
+
+write.csv(campania_dcm, file = 'Nissan_DCM_Campania.csv', row.names = F)
+
+
+
+
+########################## CREATIVOS ##################
+
+catalogo_eliminar <- data.frame(read_excel("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx", sheet = excel_sheets("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx")[1]))
+creativos <- data.frame(catalogo_eliminar[23:dim(catalogo_eliminar)[1],7])
+creativos <- creativos[-1,]
+row.names(creativos) <- dim(creativos)[1]
+creativos <- data.frame(as.character(creativos))
+colnames(creativos) <- 'Creative'
+
+
+base_dcm <- gs_read(gs_title('DATA DCM'), ws = gs_ws_ls(ss = gs_title("DATA DCM"))[grep(mes,gs_ws_ls(ss = gs_title("DATA DCM")))])
+colnames(base_dcm) <- base_dcm[10,]
+base_dcm <- base_dcm[-c(1:10),]
+base_dcm <- data.frame(base_dcm[,"Creative"])
+base_dcm <- data.frame(unique(base_dcm[,1]))
+if(length(grep('DCO',base_dcm[,1])) != 0){
+  base_dcm <- data.frame(base_dcm[-grep('DCO',base_dcm[,1]),]) 
+}else if(length(grep('DCO',base_dcm[,1])) == 0){
+  base_dcm <- base_dcm
+}
+
+
+rownames(base_dcm) <- seq(dim(base_dcm)[1])
+colnames(base_dcm) <- "Creative"
+
+
+creativo_dcm <- str_split(base_dcm[,"Creative"], "_") 
+columnas_creativo_dcm <- data.frame(matrix(ncol = 2,nrow = length(creativo_dcm)))
+
+for (i in seq(length(creativo_dcm))) {
+  columnas_creativo_dcm[i,1:2] <- c(i,length(creativo_dcm[[i]]))  
+}
+
+colnames(columnas_creativo_dcm) <- c('No.Registro','No. Columnas') 
+
+
+
+if(length(str_split(estructura_dcm[2,3], '_')[[1]]) > max(columnas_creativo_dcm[,2])){
+  n <- length(str_split(estructura_dcm[2,3], '_')[[1]])
+}else if(length(str_split(estructura_dcm[2,3], '_')[[1]]) <= max(columnas_creativo_dcm[,2])){
+  n <- max(columnas_creativo_dcm[,2])
+}
+
+
+creativo <- data.frame(matrix(nrow = dim(base_dcm)[1], ncol = n)) 
+
+for (i in seq(length(creativo_dcm)[1])) {
+  creativo[i,seq(length(creativo_dcm[[i]]))] <- as.character(creativo_dcm[[i]])
+}
+
+
+if(max(columnas_creativo_dcm[,2])>length(str_split(estructura_dcm[2,3], '_')[[1]])){
+  colnames(creativo) <- c(as.character(str_split(estructura_dcm[2,3], '_')[[1]]),rep('Variable MAL',max(columnas_creativo_dcm[,2])-length(str_split(estructura_dcm[2,3], '_')[[1]])))
+}else if(max(columnas_creativo_dcm[,2]) <= length(str_split(estructura_dcm[2,3], '_')[[1]])){
+  colnames(creativo) <- as.character(str_split(estructura_dcm[2,3], '_')[[1]])
+}
+
+creativo <- cbind(base_dcm[,"Creative"], creativo)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_creativo_dcm <- data.frame(matrix(nrow = dim(creativo)[1], ncol = length(str_split(estructura_dcm[2,3], '_')[[1]])+1))
+colnames(eval_contenido_creativo_dcm) <- as.character(str_split(estructura_dcm[2,3], '_')[[1]])
+
+diccionario_creativo_dcm <- data.frame(diccionario[grep(estructura_dcm[2,2], diccionario[,1]),c(2,dim(diccionario)[2])])
+rownames(diccionario_creativo_dcm) <- seq(dim(diccionario_creativo_dcm)[1])
+
+
+
+relaciones <- gs_read(gs_title("UNIVERSO Y AUDICIA PLANTILLA"), ws = gs_ws_ls(ss = gs_title("UNIVERSO Y AUDICIA PLANTILLA"))[1])
+
+relaciones <- data.frame(relaciones)
+
+
+eval_relaciones_creativo <- eval_contenido_creativo_dcm
+
+for (i in c(2:(length(str_split(estructura_dcm[2,3], '_')[[1]])-1),11)) {
+  validador <- cbind('Validador' = is.element(creativo[,i],diccionario_creativo_dcm[grep(str_split(estructura_dcm[2,3],'_')[[1]][i-1],diccionario_creativo_dcm[,1]),2]),'Registro' = seq(dim(creativo)[1]))
+  eval_contenido_creativo_dcm[grep(0,validador[,1]),(i-1)] <- 'MAL'
+  eval_contenido_creativo_dcm[grep(1,validador[,1]),(i-1)] <-'BIEN' 
+}
+
+catalogo_fecha <- data.frame(matrix(nrow = length(seq(1:31)),ncol = 3))
+catalogo_fecha[c(1:9,10:31),1] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,31)))
+catalogo_fecha[c(1:9,10:12),2] <- c(paste(0,seq(9),sep = ''),as.character(seq(10,12)))
+catalogo_fecha[,3] <-  as.character(seq(2016,2046))
+
+fecha <- data.frame(matrix(nrow = dim(creativo)[1],ncol = 13))
+fecha[,1] <- substring(creativo[,"Fecha de implementacion"],1,2)
+fecha[,2] <- substring(creativo[,"Fecha de implementacion"],3,3)
+fecha[,3] <- substring(creativo[,"Fecha de implementacion"],4,5)
+fecha[,4] <- substring(creativo[,"Fecha de implementacion"],6,6)
+fecha[,5] <- substring(creativo[,"Fecha de implementacion"],7,10)
+fecha[,6] <- nchar(as.character(creativo[,"Fecha de implementacion"]))
+fecha[,7] <- as.numeric(is.element(fecha[,1],catalogo_fecha[,1]))
+fecha[,8] <- as.numeric(is.element(fecha[,2],'-'))
+fecha[,9] <- as.numeric(is.element(fecha[,3],as.character(na.omit(catalogo_fecha[,2]))))
+fecha[,10] <- as.numeric(is.element(fecha[,4],'-'))
+fecha[,11] <- as.numeric(is.element(fecha[,5],as.character(na.omit(catalogo_fecha[,3]))))
+fecha[,12] <- apply(fecha[,7:11],1,sum)
+fecha <- cbind(creativo[,"Fecha de implementacion"],fecha)
+colnames(fecha) <- c('Fecha','Dia','Sep1','Mes','Sep2','Año','Longitud','Val_dia','Val_sep1','Val_mes','Val_sep2','Val_año','Total_score','Evaluación')
+colnames(eval_contenido_creativo_dcm) <- c(as.character(str_split(estructura_dcm[2,3], '_')[[1]]),'Resultado Contenido')
+
+
+for (i in seq(dim(fecha)[1])) {
+  if(fecha[i,7] == 10 && fecha[i,13] == 5){
+    fecha[i,14] <- 'BIEN'
+  }else if(fecha[i,7] != 10 || fecha[i,13] != 5){
+    fecha[i,14] <- 'MAL'
+  }
+}
+
+eval_contenido_creativo_dcm[,(length(str_split(estructura_dcm[2,3], '_')[[1]])-1)] <- fecha[,14]
+
+
+
+variable <- c("Producto","Funnel","Audiencia")
+
+for (i in seq(unique(relaciones[,1]))) {
+  print(paste('valor de i es:',i))
+  subdata <- creativo[grep(unique(relaciones[,variable[1]])[i], creativo[,"Producto"]),]
+  modelo  <- relaciones[grep(unique(relaciones[,variable[1]])[i],relaciones[,variable[1]]),]
+  for (j in seq(dim(modelo)[1])) {
+    print(paste('valor de j es:',j))
+    if(sum(is.element(subdata[,'Audiencia'],modelo[,'Audiencia'][j])) == 0){
+      next(j)
+    }else if(sum(is.element(subdata[,'Audiencia'],modelo[,'Audiencia'][j])) != 0){
+      audiencia <- subdata[rownames(subdata)[is.element(subdata[,'Audiencia'],modelo[,'Audiencia'][j])],]
+      if(sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) == 0){
+        eval_relaciones_creativo[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])]),'Audiencia'] <- paste('MAL: EL FUNNEL NO ES CORRECTO PARALA AUDIENCIA', modelo[,'Audiencia'][j], sep = ' ')
+      }else if(sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) == length(grep(modelo[,'Audiencia'][j],subdata[,'Audiencia']))){
+        eval_relaciones_creativo[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])]),'Audiencia'] <- 'BIEN'
+      }else if(sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) < length(grep(modelo[,'Audiencia'][j],subdata[,'Audiencia'])) && sum(is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])) > 0){
+        eval_relaciones_creativo[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])]),'Audiencia'] <- 'BIEN'
+        eval_relaciones_creativo[as.numeric(row.names(audiencia)[is.element(audiencia[,'Funnel'],modelo[grep(modelo[,'Audiencia'][j],modelo[,'Audiencia']),'Funnel'])==FALSE]),'Audiencia'] <- paste('MAL: EL FUNNEL NO ES CORRECTO PARALA AUDIENCIA', modelo[,'Audiencia'][j], sep = ' ')
+      }
+    }
+  }
+}
+
+
+
+eval_relaciones_creativo[is.na(eval_relaciones_creativo[,'Audiencia']),'Audiencia'] <- 'ERROR: LA AUDIENCIA ES INCORRECTA'
+
+
+for (i in seq(dim(eval_contenido_creativo_dcm)[1])) {
+  if(length(grep('BIEN',eval_contenido_creativo_dcm[i,1:length(str_split(estructura_dcm[2,3], '_')[[1]])])) == length(str_split(estructura_dcm[2,3], '_')[[1]]) ){
+    eval_contenido_creativo_dcm[i,dim(eval_contenido_creativo_dcm)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_creativo_dcm[i,1:length(str_split(estructura_dcm[2,3], '_')[[1]])])) != length(str_split(estructura_dcm[2,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_creativo_dcm[i,1:length(str_split(estructura_dcm[2,3], '_')[[1]])])) !=0){
+    eval_contenido_creativo_dcm[i,dim(eval_contenido_creativo_dcm)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_creativo_dcm)[grep('MAL',eval_contenido_creativo_dcm[i,1:length(str_split(estructura_dcm[2,3], '_')[[1]])])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_creativo_dcm[i,1:length(str_split(estructura_dcm[2,3], '_')[[1]])])) ==0){
+    eval_contenido_creativo_dcm[i,dim(eval_contenido_creativo_dcm)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+
+if(max(columnas_creativo_dcm[,2])> length(str_split(estructura_dcm[2,3], '_')[[1]]) || min(columnas_creativo_dcm[,2])< length(str_split(estructura_dcm[2,3], '_')[[1]])){
+  error_estructura_creativo_dcm <- creativo[c(as.numeric(rownames(columnas_creativo_dcm)[columnas_creativo_dcm[,2]<length(str_split(estructura_dcm[2,3], '_')[[1]])]), as.numeric(rownames(columnas_creativo_dcm)[columnas_creativo_dcm[,2]>length(str_split(estructura_dcm[2,3], '_')[[1]])])),]
+}else if(max(columnas_creativo_dcm[,2])== length(str_split(estructura_dcm[2,3], '_')[[1]]) && min(columnas_creativo_dcm[,2])< length(str_split(estructura_dcm[2,3], '_')[[1]]) ||   max(columnas_creativo_dcm[,2])== length(str_split(estructura_dcm[2,3], '_')[[1]]) && min(columnas_creativo_dcm[,2])< length(str_split(estructura_dcm[2,3], '_')[[1]])){
+  error_estructura_creativo_dcm <- data.frame(matrix(nrow = 0, ncol = dim(estructura_dcm)[2]))
+}
+
+
+colnames(error_estructura_creativo_dcm) <- c("Creative", colnames(error_estructura_creativo_dcm)[2:dim(error_estructura_creativo_dcm)[2]])
+
+if(dim(error_estructura_creativo_dcm)[1]!=0){
+  for (i in seq(dim(error_estructura_creativo_dcm)[1])) {
+    if(eval_contenido_creativo_dcm[as.numeric(row.names(error_estructura_creativo_dcm))[i],dim(eval_contenido_creativo_dcm)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_creativo_dcm[as.numeric(row.names(error_estructura_creativo_dcm))[i],dim(eval_contenido_creativo_dcm)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_creativo_dcm[as.numeric(row.names(error_estructura_creativo_dcm))[i],dim(eval_contenido_creativo_dcm)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_creativo_dcm[as.numeric(row.names(error_estructura_creativo_dcm))[i],dim(eval_contenido_creativo_dcm)[2]] <- paste(eval_contenido_creativo_dcm[as.numeric(row.names(error_estructura_creativo_dcm))[i],dim(eval_contenido_creativo_dcm)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_creativo_dcm)[1]==0){
+  eval_contenido_creativo_dcm <- eval_contenido_creativo_dcm
+}
+
+
+eval_final <- data.frame(matrix(nrow = dim(eval_contenido_creativo_dcm)[1], ncol = 1))
+colnames(eval_final) <- 'Evaluacion Final'
+
+for (i in seq(dim(eval_relaciones_creativo)[1])) {
+  if(eval_contenido_creativo_dcm[i,"Resultado Contenido"] == "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_creativo[i,'Audiencia'] == 'BIEN'){
+    eval_final[i,1] <- "CORRECTA ESTRUCTURA,CATALOGO Y RELACION"
+  }else if(eval_contenido_creativo_dcm[i,"Resultado Contenido"] == "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_creativo[i,'Audiencia'] != 'BIEN' || eval_contenido_creativo_dcm[i,"Resultado Contenido"] != "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_creativo[i,'Audiencia'] == 'BIEN' || eval_contenido_creativo_dcm[i,"Resultado Contenido"] != "CORRECTA ESTRUCTURA Y CATALOGO" && eval_relaciones_creativo[i,'Audiencia'] != 'BIEN'){
+    eval_final[i,1] <- paste(eval_contenido_creativo_dcm[i,"Resultado Contenido"],eval_relaciones_creativo[i,'Audiencia'], sep = ' Y ')
+  }
+}
+
+
+creativo <- cbind.data.frame(creativo,eval_contenido_creativo_dcm,'Evaluación Relación Audiencia' = eval_relaciones_creativo[,'Audiencia'],'Evaluación Final' = eval_final)
+
+
+colnames(creativo)[1] <- c("Creative")
+
+registros_eliminar_creativo <-  creativo[creativo[,2] != "NISSANMX",]
+
+creativo <- creativo[-as.numeric(rownames(registros_eliminar_creativo)),]
+
+row.names(creativo) <- seq(dim(creativo)[1])
+
+write.csv(registros_eliminar_creativo, file = paste(ruta,'/Nissan_DCM_Registros Eliminados.csv', sep = ''), row.names = F)
+
+write.csv(creativo, file = paste(ruta,'/Nissan_DCM_Creative.csv', sep = ''), row.names = F)
+
+
+
+
+
+########################## PLACEMENT DCM  #########
+
+catalogo_eliminar <- data.frame(read_excel("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx", sheet = excel_sheets("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx")[1]))
+place <- data.frame(catalogo_eliminar[12:77,8])
+place <- place[-1,]
+row.names(place) <- dim(place)[1]
+place <- data.frame(as.character(place))
+colnames(place) <- 'Placement'
+
+
+base_dcm <- gs_read(gs_title('DATA DCM'), ws = gs_ws_ls(ss = gs_title("DATA DCM"))[grep(mes,gs_ws_ls(ss = gs_title("DATA DCM")))])
+colnames(base_dcm) <- base_dcm[10,]
+base_dcm <- base_dcm[-c(1:10),]
+base_dcm <- data.frame(base_dcm[,"Placement"])
+
+base_dcm <- data.frame(unique(base_dcm[,1]))
+if(length(grep('DCO',base_dcm[,1])) != 0){
+  base_dcm <- data.frame(base_dcm[-grep('DCO',base_dcm[,1]),]) 
+}else if(length(grep('DCO',base_dcm[,1])) == 0){
+  base_dcm <- base_dcm
+}
+
+
+
+rownames(base_dcm) <- seq(dim(base_dcm)[1])
+colnames(base_dcm) <- "Placement"
+
+
+placement_dcm <- str_split(base_dcm[,"Placement"], "_") 
+columnas_placement_dcm <- data.frame(matrix(ncol = 2,nrow = length(placement_dcm)))
+
+for (i in seq(length(placement_dcm))) {
+  columnas_placement_dcm[i,1:2] <- c(i,length(placement_dcm[[i]]))  
+}
+
+colnames(columnas_placement_dcm) <- c('No.Registro','No. Columnas') 
+
+
+
+if(length(str_split(estructura_dcm[3,3], '_')[[1]]) > max(columnas_placement_dcm[,2])){
+  n <- length(str_split(estructura_dcm[3,3], '_')[[1]])
+}else if(length(str_split(estructura_dcm[3,3], '_')[[1]]) <= max(columnas_placement_dcm[,2])){
+  n <- max(columnas_placement_dcm[,2])
+}
+
+
+
+placement <- data.frame(matrix(nrow = dim(base_dcm)[1], ncol = n)) 
+
+for (i in seq(length(placement_dcm)[1])) {
+  placement[i,seq(length(placement_dcm[[i]]))] <- as.character(placement_dcm[[i]])
+}
+
+
+if(max(columnas_placement_dcm[,2])>length(str_split(estructura_dcm[3,3], '_')[[1]])){
+  colnames(placement) <- c(as.character(str_split(estructura_dcm[3,3], '_')[[1]]),rep('Variable MAL',max(columnas_placement_dcm[,2])-length(str_split(estructura_dcm[3,3], '_')[[1]])))
+}else if(max(columnas_placement_dcm[,2]) <= length(str_split(estructura_dcm[3,3], '_')[[1]])){
+  colnames(placement) <- as.character(str_split(estructura_dcm[3,3], '_')[[1]])
+}
+
+placement <- cbind(base_dcm[,"Placement"], placement)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_placement_dcm <- data.frame(matrix(nrow = dim(placement)[1], ncol = length(str_split(estructura_dcm[3,3], '_')[[1]])+1))
+colnames(eval_contenido_placement_dcm) <- as.character(str_split(estructura_dcm[3,3], '_')[[1]])
+
+
+
+diccionario_placement_dcm <- data.frame(diccionario[grep(estructura_dcm[3,2], diccionario[,1]),c(2,dim(diccionario)[2])])
+rownames(diccionario_placement_dcm) <- seq(dim(diccionario_placement_dcm)[1])
+
+
+
+for (i in 2:(length(str_split(estructura_dcm[3,3], '_')[[1]])+1)) {
+  validador <- cbind('Validador' = is.element(placement[,i],diccionario_placement_dcm[grep(str_split(estructura_dcm[3,3],'_')[[1]][i-1],diccionario_placement_dcm[,1]),2]),'Registro' = seq(dim(placement)[1]))
+  eval_contenido_placement_dcm[grep(0,validador[,1]),(i-1)] <- 'MAL'
+  eval_contenido_placement_dcm[grep(1,validador[,1]),(i-1)] <-'BIEN' 
+}
+
+
+for (i in seq(dim(eval_contenido_placement_dcm)[1])) {
+  if(length(grep('BIEN',eval_contenido_placement_dcm[i,1:7])) == length(str_split(estructura_dcm[3,3], '_')[[1]]) ){
+    eval_contenido_placement_dcm[i,dim(eval_contenido_placement_dcm)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_placement_dcm[i,1:7])) != length(str_split(estructura_dcm[3,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_placement_dcm[i,1:7])) !=0){
+    eval_contenido_placement_dcm[i,dim(eval_contenido_placement_dcm)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_placement_dcm)[grep('MAL',eval_contenido_placement_dcm[i,1:7])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_placement_dcm[i,1:7])) ==0){
+    eval_contenido_placement_dcm[i,dim(eval_contenido_placement_dcm)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+
+
+if(max(columnas_placement_dcm[,2])!= length(str_split(estructura_dcm[3,3], '_')[[1]]) || min(columnas_placement_dcm[,2]) != length(str_split(estructura_dcm[3,3], '_')[[1]])){
+  error_estructura_placement_dcm <- placement[as.numeric(rownames(columnas_placement_dcm)[columnas_placement_dcm[,2] != length(str_split(estructura_dcm[3,3], '_')[[1]])]),]
+}else if(max(columnas_placement_dcm[,2])== length(str_split(estructura_dcm[3,3], '_')[[1]]) && min(columnas_placement_dcm[,2]) == length(str_split(estructura_dcm[3,3], '_')[[1]])){
+  error_estructura_placement_dcm <- data.frame(matrix(nrow = 0, ncol = dim(placement)[2]))
+}
+
+colnames(error_estructura_placement_dcm) <- c("Placement", colnames(error_estructura_placement_dcm)[2:dim(error_estructura_placement_dcm)[2]])
+
+if(dim(error_estructura_placement_dcm)[1]!=0){
+  for (i in seq(dim(error_estructura_placement_dcm)[1])) {
+    if(eval_contenido_placement_dcm[as.numeric(row.names(error_estructura_placement_dcm))[i],dim(eval_contenido_placement_dcm)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_placement_dcm[as.numeric(row.names(error_estructura_placement_dcm))[i],dim(eval_contenido_placement_dcm)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_placement_dcm[as.numeric(row.names(error_estructura_placement_dcm))[i],dim(eval_contenido_placement_dcm)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_placement_dcm[as.numeric(row.names(error_estructura_placement_dcm))[i],dim(eval_contenido_placement_dcm)[2]] <- paste(eval_contenido_placement_dcm[as.numeric(row.names(error_estructura_placement_dcm))[i],dim(eval_contenido_placement_dcm)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_placement_dcm)[1]==0){
+  eval_contenido_placement_dcm <- eval_contenido_placement_dcm
+}
+
+
+placement <- cbind(placement,eval_contenido_placement_dcm)
+
+colnames(placement) <- c("Placement",colnames(placement)[2:(dim(placement)[2]-1)],'Evaluación')
+
+write.csv(placement, file = paste(ruta,'/Nissan_DCM_Placement.csv', sep = ''),  row.names = F)
+
+
+
+########################## ADNAME DCM ##############
+
+catalogo_eliminar <- data.frame(read_excel("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx", sheet = excel_sheets("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/Taxonomía Nissan.xlsx")[1]))
+adn <- data.frame(catalogo_eliminar[12:100,5])
+adn <- adn[-1,]
+row.names(adn) <- dim(adn)[1]
+adn <- data.frame(as.character(adn))
+colnames(adn) <- "Ad"
+
+
+base_dcm <- gs_read(gs_title('DATA DCM'), ws = gs_ws_ls(ss = gs_title("DATA DCM"))[grep(mes,gs_ws_ls(ss = gs_title("DATA DCM")))])
+colnames(base_dcm) <- base_dcm[10,]
+base_dcm <- base_dcm[-c(1:10),]
+base_dcm <- data.frame(base_dcm[,"Ad"])
+base_dcm <- data.frame(unique(base_dcm[,1]))
+if(length(grep('DCO',base_dcm[,1])) != 0){
+  base_dcm <- data.frame(base_dcm[-grep('DCO',base_dcm[,1]),]) 
+}else if(length(grep('DCO',base_dcm[,1])) == 0){
+  base_dcm <- base_dcm
+}
+
+
+rownames(base_dcm) <- seq(dim(base_dcm)[1])
+colnames(base_dcm) <- "Ad"
+
+
+adname_dcm <- str_split(base_dcm[,"Ad"], "_") 
+columnas_adname_dcm <- data.frame(matrix(ncol = 2,nrow = length(adname_dcm)))
+
+for (i in seq(length(adname_dcm))) {
+  columnas_adname_dcm[i,1:2] <- c(i,length(adname_dcm[[i]]))  
+}
+
+colnames(columnas_adname_dcm) <- c('No.Registro','No. Columnas') 
+
+
+if(length(str_split(estructura_dcm[4,3], '_')[[1]]) > max(columnas_adname_dcm[,2])){
+  n <- length(str_split(estructura_dcm[4,3], '_')[[1]])
+}else if(length(str_split(estructura_dcm[4,3], '_')[[1]]) <= max(columnas_adname_dcm[,2])){
+  n <- max(columnas_adname_dcm[,2])
+}
+
+
+
+
+adname <- data.frame(matrix(nrow = dim(base_dcm)[1], ncol = n)) 
+
+for (i in seq(length(adname_dcm)[1])) {
+  adname[i,seq(length(adname_dcm[[i]]))] <- as.character(adname_dcm[[i]])
+}
+
+
+if(max(columnas_adname_dcm[,2])>length(str_split(estructura_dcm[4,3], '_')[[1]])){
+  colnames(adname) <- c(as.character(str_split(estructura_dcm[4,3], '_')[[1]]),rep('Variable MAL',max(columnas_adname_dcm[,2])-length(str_split(estructura_dcm[4,3], '_')[[1]])))
+}else if(max(columnas_adname_dcm[,2]) <= length(str_split(estructura_dcm[4,3], '_')[[1]])){
+  colnames(adname) <- as.character(str_split(estructura_dcm[4,3], '_')[[1]])
+}
+
+adname <- cbind(base_dcm[,"Ad"], adname)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_adname_dcm <- data.frame(matrix(nrow = dim(adname)[1], ncol = length(str_split(estructura_dcm[4,3], '_')[[1]])+1))
+colnames(eval_contenido_adname_dcm) <- as.character(str_split(estructura_dcm[4,3], '_')[[1]])
+
+
+diccionario_adname_dcm <- data.frame(diccionario[grep(estructura_dcm[4,2], diccionario[,1]),c(2,dim(diccionario)[2])])
+rownames(diccionario_adname_dcm) <- seq(dim(diccionario_adname_dcm)[1])
+
+
+
+for (i in 2:(length(str_split(estructura_dcm[4,3], '_')[[1]])+1)) {
+  validador <- cbind('Validador' = is.element(adname[,i],diccionario_adname_dcm[grep(str_split(estructura_dcm[4,3],'_')[[1]][i-1],diccionario_adname_dcm[,1]),2]),'Registro' = seq(dim(adname)[1]))
+  eval_contenido_adname_dcm[grep(0,validador[,1]),(i-1)] <- 'MAL'
+  eval_contenido_adname_dcm[grep(1,validador[,1]),(i-1)] <-'BIEN' 
+}
+
+
+for (i in seq(dim(eval_contenido_adname_dcm)[1])) {
+  if(length(grep('BIEN',eval_contenido_adname_dcm[i,])) == length(str_split(estructura_dcm[4,3], '_')[[1]]) ){
+    eval_contenido_adname_dcm[i,dim(eval_contenido_adname_dcm)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_adname_dcm[i,])) != length(str_split(estructura_dcm[4,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_adname_dcm[i,])) !=0){
+    eval_contenido_adname_dcm[i,dim(eval_contenido_adname_dcm)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_adname_dcm)[grep('MAL',eval_contenido_adname_dcm[i,])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_adname_dcm[i,])) ==0){
+    eval_contenido_adname_dcm[i,dim(eval_contenido_adname_dcm)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+
+
+if(max(columnas_adname_dcm[,2])!= length(str_split(estructura_dcm[4,3], '_')[[1]]) || min(columnas_adname_dcm[,2]) != length(str_split(estructura_dcm[4,3], '_')[[1]])){
+  error_estructura_adname_dcm <- adname[as.numeric(rownames(columnas_adname_dcm)[columnas_adname_dcm[,2] != length(str_split(estructura_dcm[4,3], '_')[[1]])]),]
+}else if(max(columnas_adname_dcm[,2])== length(str_split(estructura_dcm[4,3], '_')[[1]]) && min(columnas_adname_dcm[,2]) == length(str_split(estructura_dcm[4,3], '_')[[1]])){
+  error_estructura_adname_dcm <- data.frame(matrix(nrow = 0, ncol = dim(adname)[2]))
+}
+
+colnames(error_estructura_adname_dcm) <- c("Ad", colnames(error_estructura_adname_dcm)[2:dim(error_estructura_adname_dcm)[2]])
+
+if(dim(error_estructura_adname_dcm)[1]!=0){
+  for (i in seq(dim(error_estructura_adname_dcm)[1])) {
+    if(eval_contenido_adname_dcm[as.numeric(row.names(error_estructura_adname_dcm))[i],dim(eval_contenido_adname_dcm)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_adname_dcm[as.numeric(row.names(error_estructura_adname_dcm))[i],dim(eval_contenido_adname_dcm)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_adname_dcm[as.numeric(row.names(error_estructura_adname_dcm))[i],dim(eval_contenido_adname_dcm)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_adname_dcm[as.numeric(row.names(error_estructura_adname_dcm))[i],dim(eval_contenido_adname_dcm)[2]] <- paste(eval_contenido_adname_dcm[as.numeric(row.names(error_estructura_adname_dcm))[i],dim(eval_contenido_adname_dcm)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_adname_dcm)[1]==0){
+  eval_contenido_adname_dcm <- eval_contenido_adname_dcm
+}
+
+
+adname <- cbind(adname,eval_contenido_adname_dcm)
+
+colnames(adname) <- c("Ad",colnames(adname)[2:(dim(adname)[2]-1)],'Evaluación')
+
+write.csv(adname, file = paste(ruta,'/Nissan_DCM_Adname.csv', sep = ''), row.names = F)
+
+
+drive_rm(paste("~/Nissan/DCM/",mes,sep = ''))
+
+drive_mkdir(paste("~/Nissan/DCM/",mes,sep = ''))
+
+drive_upload(paste(ruta,'/Nissan_DCM_Campania.csv',sep = ''),path =  as_dribble(paste('~/Nissan/DCM/',mes,sep = '')), type = 'spreadsheet')
+
+drive_upload(paste(ruta,'/Nissan_DCM_Registros Eliminados.csv',sep = ''),path =  as_dribble(paste('~/Nissan/DCM/',mes,sep = '')), type = 'spreadsheet')
+
+drive_upload(paste(ruta,'/Nissan_DCM_Creative.csv',sep = ''),path =  as_dribble(paste('~/Nissan/DCM/',mes,sep = '')), type = 'spreadsheet')
+
+drive_upload(paste(ruta,'/Nissan_DCM_Placement.csv',sep = ''),path =  as_dribble(paste('~/Nissan/DCM/',mes,sep = '')), type = 'spreadsheet')
+
+drive_upload(paste(ruta,'/Nissan_DCM_Adname.csv',sep = ''),path =  as_dribble(paste('~/Nissan/DCM/',mes,sep = '')), type = 'spreadsheet')
+
+
+#######################################################################
+# Generamos las bases que nos ayudaran a realizar el reporte historico#
+#######################################################################
+sm_hist_adname <- cbind.data.frame('Fecha' = mes, adname[,seq(1 + length(str_split(estructura_dcm[4,3],'_')[[1]]))] )
+resultados_adname <- data.frame(matrix(nrow = dim(sm_hist_adname)[1], ncol = 1))
+resultados_adname[grep('ERROR',adname[,dim(adname)[2]]),1] <-'MAL'
+resultados_adname[is.na(resultados_adname[,1]),1] <- 'BIEN'
+colnames(resultados_adname) <- 'Resultados'
+sm_hist_adname <- cbind.data.frame(sm_hist_adname,resultados_adname)
+
+save(sm_hist_adname,file = paste(getwd(),'/AdName_',mes,'.rda', sep = ''))
+
+sm_hist_creativo <- cbind.data.frame('Fecha' = mes, creativo[,seq(1 + length(str_split(estructura_dcm[2,3],'_')[[1]]))] )
+resultados_creativo <- data.frame(matrix(nrow = dim(sm_hist_creativo)[1], ncol = 1))
+resultados_creativo[grep('ERROR',creativo[,dim(creativo)[2]]),1] <-'MAL'
+resultados_creativo[is.na(resultados_creativo[,1]),1] <- 'BIEN'
+colnames(resultados_creativo) <- 'Resultados'
+sm_hist_creativo <- cbind.data.frame(sm_hist_creativo,resultados_creativo)
+
+save(sm_hist_creativo,file = paste(getwd(),'/Creativo_',mes,'.rda', sep = ''))
+
+sm_hist_placement <- cbind.data.frame('Fecha' = mes, placement[,seq(1 + length(str_split(estructura_dcm[3,3],'_')[[1]]))] )
+resultados_placement <- data.frame(matrix(nrow = dim(sm_hist_placement)[1], ncol = 1))
+resultados_placement[grep('ERROR',placement[,dim(placement)[2]]),1] <-'MAL'
+resultados_placement[is.na(resultados_placement[,1]),1] <- 'BIEN'
+colnames(resultados_placement) <- 'Resultados'
+sm_hist_placement <- cbind.data.frame(sm_hist_placement,resultados_placement)
+
+save(sm_hist_placement,file = paste(getwd(),'/Placement_',mes,'.rda',sep = ''))
+
+
+
+sm_hist_campania <- cbind.data.frame('Fecha' = mes, campania_dcm[,seq(1 + length(str_split(estructura_dcm[1,3],'_')[[1]]))] )
+resultados_campania <- data.frame(matrix(nrow = dim(sm_hist_campania)[1], ncol = 1))
+resultados_campania[grep('ERROR',campania_dcm[,dim(campania_dcm)[2]]),1] <-'MAL'
+resultados_campania[is.na(resultados_campania[,1]),1] <- 'BIEN'
+colnames(resultados_campania) <- 'Resultados'
+sm_hist_campania <- cbind.data.frame(sm_hist_campania,resultados_campania)
+
+save(sm_hist_campania,file = paste(getwd(),'/Campaña_',mes,'.rda',sep = ''))
+
+
+
+
+
+##################################  RESUMEN TOTAL DCM ##############
+
+
+
+
+resumen_dcm <- data.frame(matrix(ncol = 6, nrow = 4))
+
+
+resumen_dcm[1,1] <- 'CampañaDCM'
+resumen_dcm[1,2:6] <- c(dim(campania_dcm)[1]-length(grep('ERROR',campania_dcm[,dim(campania_dcm)[2]])),
+                        length(grep('ERROR',campania_dcm[,dim(campania_dcm)[2]])),
+                        dim(campania_dcm)[1],
+                        as.character(paste(round((dim(campania_dcm)[1]-length(grep('ERROR',campania_dcm[,dim(campania_dcm)[2]])))/dim(campania_dcm)[1]*100,2),'%')),
+                        as.character(paste(round((length(grep('ERROR',campania_dcm[,dim(campania_dcm)[2]]))/dim(campania_dcm)[1])*100,2),'%')))
+
+if(length(grep('ERROR',campania_dcm[,dim(campania_dcm)[2]])) != 0){
+  error_campania_dcm <- campania_dcm[grep('ERROR',campania_dcm[,dim(campania_dcm)[2]]),]
+}else if(length(grep('ERROR',campania_dcm[,dim(campania_dcm)[2]])) == 0){
+  error_campania_dcm <- 'No hay Errores'
+}
+
+
+resumen_dcm[2,1] <- 'Creative'
+resumen_dcm[2,2:6] <- c(dim(creativo)[1]-length(grep('ERROR',creativo[,dim(creativo)[2]])),
+                        length(grep('ERROR',creativo[,dim(creativo)[2]])),
+                        dim(creativo)[1],
+                        as.character(paste(round((dim(creativo)[1]-length(grep('ERROR',creativo[,dim(creativo)[2]])))/dim(creativo)[1]*100,2),'%')),
+                        as.character(paste(round((length(grep('ERROR',creativo[,dim(creativo)[2]]))/dim(creativo)[1])*100,2),'%')))
+
+
+if(length(grep('ERROR',creativo[,dim(creativo)[2]])) != 0){
+  error_creativo <- creativo[grep('ERROR',creativo[,dim(creativo)[2]]),]
+}else if(length(grep('ERROR',creativo[,dim(creativo)[2]])) == 0){
+  error_creativo <- 'No hay Errores'
+}
+
+
+
+resumen_dcm[3,1] <- 'PlacementDCM'
+colnames(resumen_dcm) <- c('Sección','Bien Formada','Mal Formada','Total','% Bien Formada','% Mal Formada')
+resumen_dcm[3,2:6] <- c(dim(placement)[1]-length(grep('ERROR',placement[,dim(placement)[2]])),
+                        length(grep('ERROR',placement[,dim(placement)[2]])),
+                        dim(placement)[1],
+                        as.character(paste(round((dim(placement)[1]-length(grep('ERROR',placement[,dim(placement)[2]])))/dim(placement)[1]*100,2),'%')),
+                        as.character(paste(round((length(grep('ERROR',placement[,dim(placement)[2]]))/dim(placement)[1])*100,2),'%')))
+
+if(length(grep('ERROR',placement[,dim(placement)[2]])) != 0){
+  error_placement <- placement[grep('ERROR',placement[,dim(placement)[2]]),]
+}else if(length(grep('ERROR',placement[,dim(placement)[2]])) == 0){
+  error_placement <- 'No hay Errores'
+}
+
+
+
+resumen_dcm[4,1] <- 'AdName'
+colnames(resumen_dcm) <- c('Sección','Bien Formada','Mal Formada','Total','% Bien Formada','% Mal Formada')
+resumen_dcm[4,2:6] <- c(dim(adname)[1]-length(grep('ERROR',adname[,dim(adname)[2]])),
+                        length(grep('ERROR',adname[,dim(adname)[2]])),
+                        dim(adname)[1],
+                        as.character(paste(round((dim(adname)[1]-length(grep('ERROR',adname[,dim(adname)[2]])))/dim(adname)[1]*100,2),'%')),
+                        as.character(paste(round((length(grep('ERROR',adname[,dim(adname)[2]]))/dim(adname)[1])*100,2),'%')))
+
+if(length(grep('ERROR',adname[,dim(adname)[2]])) != 0){
+  error_adname_dcm <- adname[grep('ERROR',adname[,dim(adname)[2]]),]
+}else if(length(grep('ERROR',adname[,dim(adname)[2]])) == 0){
+  error_adname_dcm <- 'No hay Errores'
+}
+
+
+imagen_dcm <- data.frame(
+  Status = factor(c('Bien Formada','Mal Formada')),
+  Fuente = factor(c('CampañaDCM','CampañaDCM','Creative','Creative','PlacementDCM','PlacementDCM','AdNAme','AdNAme'), levels = c('CampañaDCM','Creative','PlacementDCM','AdNAme')),
+  Registros = c(as.numeric(resumen_dcm[1,2:3]),as.numeric(resumen_dcm[2,2:3]),as.numeric(resumen_dcm[3,2:3]),as.numeric(resumen_dcm[4,2:3]))
+)
+
+
+
+if(class(error_adname_dcm) != "character"){
+  type_mistake_adname_dcm <- cbind.data.frame(error_adname_dcm[dim(error_adname_dcm)[2]],'Valor' = as.numeric(1))
+  type_mistake_adname_dcm <- as.data.frame(type_mistake_adname_dcm %>% group_by( type_mistake_adname_dcm[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_adname_dcm <- cbind.data.frame(type_mistake_adname_dcm[,1],'AdName',type_mistake_adname_dcm[,2])
+  colnames(type_mistake_adname_dcm) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_adname_dcm <- arrange(type_mistake_adname_dcm,Contador)
+}else if(class(error_adname_dcm) == "character"){
+  type_mistake_adname_dcm <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",adname[,dim(adname)[2]]))))
+  type_mistake_adname_dcm <- cbind.data.frame(type_mistake_adname_dcm[,1],'AdName',type_mistake_adname_dcm[,2])
+  colnames(type_mistake_adname_dcm) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+
+if(class(error_creativo) != "character"){
+  type_mistake_creativo <- cbind.data.frame(error_creativo[dim(error_creativo)[2]],'Valor' = as.numeric(1))
+  type_mistake_creativo <- as.data.frame(type_mistake_creativo %>% group_by( type_mistake_creativo[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_creativo <- cbind.data.frame(type_mistake_creativo[,1],'Creative',type_mistake_creativo[,2])
+  colnames(type_mistake_creativo) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_creativo <- arrange(type_mistake_creativo,Contador)
+}else if(class(error_creativo) == "character"){
+  type_mistake_creativo <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",creativo[,dim(creativo)[2]]))))
+  type_mistake_creativo <- cbind.data.frame(type_mistake_creativo[,1],'Creative',type_mistake_creativo[,2])
+  colnames(type_mistake_creativo) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+if(class(error_campania_dcm) != "character"){
+  type_mistake_campania_dcm <- cbind.data.frame(error_campania_dcm[dim(error_campania_dcm)[2]],'Valor' = as.numeric(1))
+  type_mistake_campania_dcm <- as.data.frame(type_mistake_campania_dcm %>% group_by( type_mistake_campania_dcm[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_campania_dcm <- cbind.data.frame(type_mistake_campania_dcm[,1],'Campaña',type_mistake_campania_dcm[,2])
+  colnames(type_mistake_campania_dcm) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_campania_dcm <- arrange(type_mistake_campania_dcm,Contador)
+}else if(class(error_campania_dcm) == "character"){
+  type_mistake_campania_dcm <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",campania_dcm[,dim(campania_dcm)[2]]))))
+  type_mistake_campania_dcm <- cbind.data.frame(type_mistake_campania_dcm[,1],'Campaña',type_mistake_campania_dcm[,2])
+  colnames(type_mistake_campania_dcm) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+if(class(error_placement) != "character"){
+  type_mistake_placement <- cbind.data.frame(error_placement[dim(error_placement)[2]],'Valor' = as.numeric(1))
+  type_mistake_placement <- as.data.frame(type_mistake_placement %>% group_by( type_mistake_placement[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_placement <- cbind.data.frame(type_mistake_placement[,1],'Placement',type_mistake_placement[,2])
+  colnames(type_mistake_placement) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_placement <- arrange(type_mistake_placement,Contador)
+}else if(class(error_placement) == "character"){
+  type_mistake_placement <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",placement[,dim(placement)[2]]))))
+  type_mistake_placement <- cbind.data.frame(type_mistake_placement[,1],'Placement',type_mistake_placement[,2])
+  colnames(type_mistake_placement) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+
+tipo_errores_dcm <- rbind.data.frame(type_mistake_adname_dcm,type_mistake_creativo,type_mistake_campania_dcm, type_mistake_placement) 
+
+error_dcm <- data.frame(
+  Resultado_Contenido = factor(tipo_errores_dcm[,1]),
+  Seccion = factor(tipo_errores_dcm[,2], levels = as.character(unique(tipo_errores_dcm[,2]))),
+  Contador = tipo_errores_dcm[,3] 
+)
+
+
+
+
+
+
+
+########## Tablas con Kable
+
+
+resumen_dcm <- kable(resumen_dcm,format = 'html',longtable = TRUE, caption = NULL,
+                     booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+error_campania_dcm <- kable(error_campania_dcm,format = 'html',longtable = TRUE, caption = NULL,
+                            booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+error_creativo <- kable(error_creativo,format = 'html',longtable = TRUE, caption = NULL,
+                        booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+
+error_placement <- kable(error_placement,format = 'html',longtable = TRUE, caption = NULL,
+                         booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+
+error_adname_dcm <- kable(error_adname_dcm,format = 'html',longtable = TRUE, caption = NULL,
+                          booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+
+
+####### Gráfica
+
+
+
+p_dcm <- ggplot(data=imagen_dcm, aes(x=Fuente, y=Registros, fill=Status)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black") +
+  scale_fill_manual(values=c("green", "red"))
+
+p_dcm <- ggplotly(p_dcm)
+
+p_dcm
+
+q_dcm <- ggplot(data=error_dcm, aes(x=Seccion, y=Contador, fill=Resultado_Contenido)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black")
+
+q_dcm <- ggplotly(q_dcm)
+
+q_dcm
+
+
+
+
+error_dcm <- kable(error_dcm,format = 'html',longtable = TRUE, caption = NULL,
+                   booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+
+
+
+
+
+################################################################################################
+
+#########################################     ADW  #############################################
+
+################################################################################################
+
+
+ruta <- paste("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/ADWORDS/",mes,sep = '')
+
+setwd(paste("C:/Users/Luis.TorresP/Desktop/Archivos/Validador de Taxonomía/ADWORDS/",mes, sep = ''))
+base_adw <- gs_read(gs_title('DATA ADW'), ws = gs_ws_ls(ss = gs_title("DATA ADW"))[grep(mes,gs_ws_ls(ss = gs_title("DATA ADW")))])
+base_adw <- data.frame(base_adw)
+colnames(base_adw) <- base_adw[2,]
+
+base_adw <- base_adw[-c(1:2),]
+base_adw <- data.frame(base_adw)
+base_adw <- base_adw[base_adw[,"Impressions"] != 0,]
+row.names(base_adw) <- seq(dim(base_adw)[1])
+
+row.names(base_adw) <- seq(dim(base_adw)[1])
+
+base_adw <- data.frame(unique(base_adw[,"Campaign"]))
+colnames(base_adw) <- "Campaign"
+row.names(base_adw) <- seq(dim(base_adw)[1])
+
+
+estructura_adw <- data.frame(matrix(nrow = 3,ncol = 3))
+
+fuentes_adw <- data.frame(fuentes[grep('ADWORDS', toupper(fuentes[,1])),])
+fuentes_adw <- fuentes_adw[c(grep('anuncios',fuentes_adw[,1]),grep('Campaña',fuentes_adw[,1]),grep('cuenta',fuentes_adw[,1])),]
+
+estructura_adw[,2:3] <- fuentes_adw
+
+
+
+
+
+
+#################### Nombre de Campañas ADW #######
+
+
+cam_adw <- str_split(base_adw[,1], "_") 
+columnas_cam_adw <- data.frame(matrix(ncol = 2,nrow = length(cam_adw)))
+
+for (i in seq(length(cam_adw))) {
+  columnas_cam_adw[i,1:2] <- c(i,length(cam_adw[[i]]))  
+}
+
+colnames(columnas_cam_adw) <- c('No.Registro','No. Columnas') 
+
+if(length(str_split(estructura_adw[2,3], '_')[[1]]) > max(columnas_cam_adw[,2])){
+  n <- length(str_split(estructura_adw[2,3], '_')[[1]])
+}else if(length(str_split(estructura_adw[2,3], '_')[[1]]) <= max(columnas_cam_adw[,2])){
+  n <- max(columnas_cam_adw[,2])
+}
+
+
+campania_adw <- data.frame(matrix(nrow = dim(base_adw)[1], ncol = n)) 
+
+for (i in seq(length(cam_adw)[1])) {
+  campania_adw[i,seq(length(cam_adw[[i]]))] <- as.character(cam_adw[[i]])
+}
+
+
+if(max(columnas_cam_adw[,2])>length(str_split(estructura_adw[2,3], '_')[[1]])){
+  colnames(campania_adw) <- c(as.character(str_split(estructura_adw[2,3], '_')[[1]]),rep('Variable MAL',max(columnas_cam_adw[,2])-length(str_split(estructura_adw[2,3], '_')[[1]])))
+}else if(max(columnas_cam_adw[,2]) <= length(str_split(estructura_adw[2,3], '_')[[1]])){
+  colnames(campania_adw) <- as.character(str_split(estructura_adw[2,3], '_')[[1]])
+}
+
+campania_adw <- cbind(base_adw[,1], campania_adw)
+
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_campania_adw <- data.frame(matrix(nrow = dim(campania_adw)[1], ncol = length(str_split(estructura_adw[2,3], '_')[[1]])+1))
+colnames(eval_contenido_campania_adw) <- as.character(str_split(estructura_adw[2,3], '_')[[1]])
+
+
+diccionario_cam_adw <- data.frame(diccionario[grep(estructura_adw[2,2], diccionario[,1]),c(2,5)])
+rownames(diccionario_cam_adw) <- seq(dim(diccionario_cam_adw)[1])
+
+
+for (i in 2:length(str_split(estructura_adw[2,3], '_')[[1]])) {
+  validador <- cbind('Validador' = is.element(campania_adw[,i],diccionario_cam_adw[grep(str_split(estructura_adw[2,3],'_')[[1]][i-1],diccionario_cam_adw[,1]),2]),'Registro' = seq(dim(campania_adw)[1]))
+  eval_contenido_campania_adw[grep(0,validador[,1]),(i-1)] <- 'MAL'
+  eval_contenido_campania_adw[grep(1,validador[,1]),(i-1)] <-'BIEN' 
+}
+
+
+eval_contenido_campania_adw[,length(str_split(estructura_adw[2,3], '_')[[1]])] <- 'BIEN'
+
+for (i in seq(dim(eval_contenido_campania_adw)[1])) {
+  if(length(grep('BIEN',eval_contenido_campania_adw[i,])) == length(str_split(estructura_adw[2,3], '_')[[1]]) ){
+    eval_contenido_campania_adw[i,dim(eval_contenido_campania_adw)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_campania_adw[i,])) != length(str_split(estructura_adw[2,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_campania_adw[i,])) !=0){
+    eval_contenido_campania_adw[i,dim(eval_contenido_campania_adw)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_campania_adw)[grep('MAL',eval_contenido_campania_adw[i,])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_campania_adw[i,])) ==0){
+    eval_contenido_campania_adw[i,dim(eval_contenido_campania_adw)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+
+if(max(columnas_cam_adw[,2])> length(str_split(estructura_adw[2,3], '_')[[1]]) || min(columnas_cam_adw[,2])< length(str_split(estructura_adw[2,3], '_')[[1]])-1){
+  error_estructura_campania_adw <- campania_adw[c(as.numeric(rownames(columnas_cam_adw)[columnas_cam_adw[,2]<length(str_split(estructura_adw[2,3], '_')[[1]])-1]), as.numeric(rownames(columnas_cam_adw)[columnas_cam_adw[,2]>length(str_split(estructura_adw[2,3], '_')[[1]])])),]
+}else if(max(columnas_cam_adw[,2])== length(str_split(estructura_adw[2,3], '_')[[1]]) && min(columnas_cam_adw[,2])< length(str_split(estructura_adw[2,3], '_')[[1]]) ||   max(columnas_cam_adw[,2])== length(str_split(estructura_adw[2,3], '_')[[1]])-1 && min(columnas_cam_adw[,2])< length(str_split(estructura_adw[2,3], '_')[[1]])-1){
+  error_estructura_campania_adw <- data.frame(matrix(nrow = 0, ncol = dim(estructura_adw)[2]))
+}
+
+
+colnames(error_estructura_campania_adw) <- c(colnames(base_adw)[2], colnames(error_estructura_campania_adw)[2:dim(error_estructura_campania_adw)[2]])
+
+if(dim(error_estructura_campania_adw)[1]!=0){
+  for (i in seq(dim(error_estructura_campania_adw)[1])) {
+    if(eval_contenido_campania_adw[as.numeric(row.names(error_estructura_campania_adw))[i],dim(eval_contenido_campania_adw)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_campania_adw[as.numeric(row.names(error_estructura_campania_adw))[i],dim(eval_contenido_campania_adw)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_campania_adw[as.numeric(row.names(error_estructura_campania_adw))[i],dim(eval_contenido_campania_adw)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_campania_adw[as.numeric(row.names(error_estructura_campania_adw))[i],dim(eval_contenido_campania_adw)[2]] <- paste(eval_contenido_campania_adw[as.numeric(row.names(error_estructura_campania_adw))[i],dim(eval_contenido_campania_adw)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_campania_adw)[1]==0){
+  eval_contenido_campania_adw <- eval_contenido_campania_adw
+}
+
+
+campania_adw <- cbind(campania_adw,eval_contenido_campania_adw)
+
+colnames(campania_adw) <- c(colnames(base_adw)[1],colnames(campania_adw)[2:(dim(campania_adw)[2]-1)],'Evaluación')
+
+write.csv(campania_adw, file = paste(ruta,'/Nissan_ADW_Campania.csv', sep = ''), row.names = F)
+
+drive_rm(paste("~/Nissan/ADW/",mes,sep = ''))
+
+drive_mkdir(paste("~/Nissan/ADW/",mes,sep = ''))
+
+drive_upload(paste(ruta,'/Nissan_ADW_Campania.csv',sep = ''),path =  as_dribble(paste('~/Nissan/ADW/',mes,sep = '')), type = 'spreadsheet')
+
+#################### Cuenta ADWORDS #########
+
+
+base_adw <- gs_read(gs_title('DATA ADW'), ws = gs_ws_ls(ss = gs_title("DATA ADW"))[grep(mes,gs_ws_ls(ss = gs_title("DATA ADW")))])
+base_adw <- data.frame(base_adw)
+colnames(base_adw) <- base_adw[2,]
+
+base_adw <- base_adw[-c(1:2),]
+base_adw <- data.frame(base_adw)
+base_adw <- base_adw[base_adw[,"Impressions"] != 0,]
+row.names(base_adw) <- seq(dim(base_adw)[1])
+
+row.names(base_adw) <- seq(dim(base_adw)[1])
+
+base_adw <- data.frame(unique(base_adw[,"Account"]))
+colnames(base_adw) <- "Account"
+row.names(base_adw) <- seq(dim(base_adw)[1])
+
+
+cuenta_adw <- str_split(base_adw[,1], "_") 
+columnas_cuenta_adw <- data.frame(matrix(ncol = 2,nrow = length(cuenta_adw)))
+
+for (i in seq(length(cuenta_adw))) {
+  columnas_cuenta_adw[i,1:2] <- c(i,length(cuenta_adw[[i]]))  
+}
+
+colnames(columnas_cuenta_adw) <- c('No.Registro','No. Columnas') 
+
+
+if(length(str_split(estructura_adw[3,3], '_')[[1]]) > max(columnas_cuenta_adw[,2])){
+  n <- length(str_split(estructura_adw[3,3], '_')[[1]])
+}else if(length(str_split(estructura_adw[3,3], '_')[[1]]) <= max(columnas_cuenta_adw[,2])){
+  n <- max(columnas_cuenta_adw[,2])
+}
+
+
+cuenta <- data.frame(matrix(nrow = dim(base_adw)[1], ncol = n)) 
+
+for (i in seq(length(cuenta_adw)[1])) {
+  cuenta[i,seq(length(cuenta_adw[[i]]))] <- as.character(cuenta_adw[[i]])
+}
+
+
+if(max(columnas_cuenta_adw[,2])>length(str_split(estructura_adw[3,3], '_')[[1]])){
+  colnames(cuenta) <- c(as.character(str_split(estructura_adw[3,3], '_')[[1]]),rep('Variable MAL',max(columnas_cuenta_adw[,2])-length(str_split(estructura_adw[3,3], '_')[[1]])))
+}else if(max(columnas_cuenta_adw[,2]) <= length(str_split(estructura_adw[3,3], '_')[[1]])){
+  colnames(cuenta) <- as.character(str_split(estructura_adw[3,3], '_')[[1]])
+}
+
+cuenta <- cbind(base_adw[,1], cuenta)
+
+colnames(cuenta) <- c(colnames(base_adw)[1],as.character(str_split(estructura_adw[3,3],'_')[[1]]))
+
+# Analizamos si cada columna tiene los valores correctos 
+
+eval_contenido_cuenta_adw <- data.frame(matrix(nrow = dim(cuenta)[1], ncol = length(str_split(estructura_adw[3,3], '_')[[1]])+1))
+colnames(eval_contenido_cuenta_adw) <- as.character(str_split(estructura_adw[3,3], '_')[[1]])
+
+
+diccionario_cuenta_adw <- data.frame(diccionario[grep(estructura_adw[3,2], diccionario[,1]),c(2,5)])
+rownames(diccionario_cuenta_adw) <- seq(dim(diccionario_cuenta_adw)[1])
+
+
+for (i in 2:(length(str_split(estructura_adw[3,3], '_')[[1]])+1)) {
+  validador <- cbind('Validador' = is.element(cuenta[,i],diccionario_cuenta_adw[grep(str_split(estructura_adw[3,3],'_')[[1]][i-1],diccionario_cuenta_adw[,1]),2]),'Registro' = seq(dim(cuenta)[1]))
+  eval_contenido_cuenta_adw[grep(0,validador[,1]),(i-1)] <- 'MAL'
+  eval_contenido_cuenta_adw[grep(1,validador[,1]),(i-1)] <-'BIEN' 
+}
+
+
+for (i in seq(dim(eval_contenido_cuenta_adw)[1])) {
+  if(length(grep('BIEN',eval_contenido_cuenta_adw[i,])) == length(str_split(estructura_adw[3,3], '_')[[1]]) ){
+    eval_contenido_cuenta_adw[i,dim(eval_contenido_cuenta_adw)[2]] <- 'CORRECTA ESTRUCTURA Y CATALOGO'  
+  }else if(length(grep('BIEN',eval_contenido_cuenta_adw[i,])) != length(str_split(estructura_adw[3,3],'_')[[1]]) && length(grep('BIEN',eval_contenido_cuenta_adw[i,])) != 0){
+    eval_contenido_cuenta_adw[i,dim(eval_contenido_cuenta_adw)[2]] <- paste('ERROR EN:', paste(toupper(colnames(eval_contenido_cuenta_adw)[grep('MAL',eval_contenido_cuenta_adw[i,])]),collapse = '-'),sep = ' ')
+  }else if(length(grep('BIEN',eval_contenido_cuenta_adw[i,])) ==0){
+    eval_contenido_cuenta_adw[i,dim(eval_contenido_cuenta_adw)[2]] <- 'ERROR DE CATALOGO EN TODAS LAS MÉTRICAS'
+  }
+}
+
+if(max(columnas_cuenta_adw[,2])!= length(str_split(estructura_adw[3,3], '_')[[1]]) || min(columnas_cuenta_adw[,2])!=length(str_split(estructura_adw[3,3], '_')[[1]])){
+  error_estructura_cuenta_adw <- cuenta[as.numeric(rownames(columnas_cuenta_adw)[columnas_cuenta_adw[,2]!=length(str_split(estructura_adw[3,3], '_')[[1]])]),]
+}else if(max(columnas_cuenta_adw[,2])==length(str_split(estructura_adw[3,3], '_')[[1]]) && min(columnas_cuenta_adw[,2])==length(str_split(estructura_adw[3,3], '_')[[1]])){
+  error_estructura_cuenta_adw <- data.frame(matrix(nrow = 0, ncol = dim(cuenta)[2]))
+}
+
+colnames(error_estructura_cuenta_adw) <- c(colnames(base_adw)[2], colnames(cuenta)[2:dim(cuenta)[2]])
+
+if(dim(error_estructura_cuenta_adw)[1]!=0){
+  for (i in seq(dim(error_estructura_cuenta_adw)[1])) {
+    if(eval_contenido_cuenta_adw[as.numeric(row.names(error_estructura_cuenta_adw))[i],dim(eval_contenido_cuenta_adw)[2]] == "CORRECTA ESTRUCTURA Y CATALOGO"){
+      eval_contenido_cuenta_adw[as.numeric(row.names(error_estructura_cuenta_adw))[i],dim(eval_contenido_cuenta_adw)[2]] <- paste('CORRECTO CATALOGO PERO ERROR DE ESTRUCTURA')
+    }else if(eval_contenido_cuenta_adw[as.numeric(row.names(error_estructura_cuenta_adw))[i],dim(eval_contenido_cuenta_adw)[2]]!='CORRECTA ESTRUCTURA'){
+      eval_contenido_cuenta_adw[as.numeric(row.names(error_estructura_cuenta_adw))[i],dim(eval_contenido_cuenta_adw)[2]] <- paste(eval_contenido_cuenta_adw[as.numeric(row.names(error_estructura_cuenta_adw))[i],dim(eval_contenido_cuenta_adw)[2]],'ERROR DE ESTRUCTURA', sep = '-') 
+    }
+  }
+  
+}else if(dim(error_estructura_cuenta_adw)[1]==0){
+  eval_contenido_cuenta_adw <- eval_contenido_cuenta_adw
+}
+
+
+cuenta <- cbind(cuenta,eval_contenido_cuenta_adw)
+
+colnames(cuenta) <- c(colnames(base_adw)[1],colnames(cuenta)[2:(dim(cuenta)[2]-1)],'Evaluación')
+
+write.csv(cuenta, file = paste(ruta,'/Nissan_ADW_Cuenta.csv', sep = ''), row.names = F)
+
+
+drive_upload(paste(ruta,'/Nissan_ADW_Cuenta.csv',sep = ''),path =  as_dribble(paste('~/Nissan/ADW/',mes,sep = '')), type = 'spreadsheet')
+
+
+
+
+
+############ Resumen Total ADWORDS ############3
+
+
+
+resumen_adw <- data.frame(matrix(ncol = 6, nrow = 2))
+
+
+resumen_adw[1,1] <- 'Campaña AW'
+resumen_adw[1,2:6] <- c(dim(campania_adw)[1]-length(grep('ERROR',campania_adw[,dim(campania_adw)[2]])),
+                        length(grep('ERROR',campania_adw[,dim(campania_adw)[2]])),
+                        dim(campania_adw)[1],
+                        as.character(paste(round((dim(campania_adw)[1]-length(grep('ERROR',campania_adw[,dim(campania_adw)[2]])))/dim(campania_adw)[1]*100,2),'%')),
+                        as.character(paste(round((length(grep('ERROR',campania_adw[,dim(campania_adw)[2]]))/dim(campania_adw)[1])*100,2),'%')))
+
+if(length(grep('ERROR',campania_adw[,dim(campania_adw)[2]])) != 0){
+  error_campania_adw <- campania_adw[grep('ERROR',campania_adw[,dim(campania_adw)[2]]),]
+}else if(length(grep('ERROR',campania_adw[,dim(campania_adw)[2]])) == 0){
+  error_campania_adw <- 'No hay Errores'
+}
+
+
+resumen_adw[2,1] <- 'Cuenta'
+resumen_adw[2,2:6] <- c(dim(cuenta)[1]-length(grep('ERROR',cuenta[,dim(cuenta)[2]])),
+                        length(grep('ERROR',cuenta[,dim(cuenta)[2]])),
+                        dim(cuenta)[1],
+                        as.character(paste(round((dim(cuenta)[1]-length(grep('ERROR',cuenta[,dim(cuenta)[2]])))/dim(cuenta)[1]*100,2),'%')),
+                        as.character(paste(round((length(grep('ERROR',cuenta[,dim(cuenta)[2]]))/dim(cuenta)[1])*100,2),'%')))
+
+colnames(resumen_adw) <- c('Sección','Bien Formada','Mal Formada','Total','% Bien Formada','% Mal Formada')
+
+if(length(grep('ERROR',cuenta[,dim(cuenta)[2]])) != 0){
+  error_cuenta <- cuenta[grep('ERROR',cuenta[,dim(cuenta)[2]]),]
+}else if(length(grep('ERROR',cuenta[,dim(cuenta)[2]])) == 0){
+  error_cuenta <- 'No hay Errores'
+}
+
+
+imagen_adw <- data.frame(
+  Status = factor(c('Bien Formada','Mal Formada')),
+  Fuente = factor(c('Campaña AW','Campaña AW','Cuenta','Cuenta'), levels = unique(resumen_adw[,1])),
+  Registros = c(as.numeric(resumen_adw[1,2:3]),as.numeric(resumen_adw[2,2:3]))
+)
+
+
+if(class(error_cuenta) != "character"){
+  type_mistake_cuenta <- cbind.data.frame(error_cuenta[dim(error_cuenta)[2]],'Valor' = as.numeric(1))
+  type_mistake_cuenta <- as.data.frame(type_mistake_cuenta %>% group_by( type_mistake_cuenta[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_cuenta <- cbind.data.frame(type_mistake_cuenta[,1],'Cuenta',type_mistake_cuenta[,2])
+  colnames(type_mistake_cuenta) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_cuenta <- arrange(type_mistake_cuenta,Contador)
+}else if(class(error_cuenta) == "character"){
+  type_mistake_cuenta <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",cuenta[,dim(cuenta)[2]]))))
+  type_mistake_cuenta <- cbind.data.frame(type_mistake_cuenta[,1],'Cuenta',type_mistake_cuenta[,2])
+  colnames(type_mistake_cuenta) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+if(class(error_campania_adw) != "character"){
+  type_mistake_campania_adw <- cbind.data.frame(error_campania_adw[dim(error_campania_adw)[2]],'Valor' = as.numeric(1))
+  type_mistake_campania_adw <- as.data.frame(type_mistake_campania_adw %>% group_by( type_mistake_campania_adw[,1]) %>% summarise_if(is.numeric,sum))
+  type_mistake_campania_adw <- cbind.data.frame(type_mistake_campania_adw[,1],'Campaña AW',type_mistake_campania_adw[,2])
+  colnames(type_mistake_campania_adw) <- c('Resultado_Contenido','Seccion','Contador')
+  type_mistake_campania_adw <- arrange(type_mistake_campania_adw,Contador)
+}else if(class(error_campania_adw) == "character"){
+  type_mistake_campania_adw <- cbind.data.frame('Resultado_Contenido' = c('Errores','Correctos'), 'Contador' = c(0,length(grep("CORRECTA ESTRUCTURA Y CATALOGO",campania_adw[,dim(campania_adw)[2]]))))
+  type_mistake_campania_adw <- cbind.data.frame(type_mistake_campania_adw[,1],'Campaña AW',type_mistake_campania_adw[,2])
+  colnames(type_mistake_campania_adw) <- c('Resultado_Contenido','Seccion','Contador')
+}
+
+
+tipo_errores_adw <- rbind.data.frame(type_mistake_campania_adw,type_mistake_cuenta) 
+
+
+error_adw <- data.frame(
+  Resultado_Contenido = factor(tipo_errores_adw[,1]),
+  Seccion = factor(tipo_errores_adw[,2], levels = as.character(unique(tipo_errores_adw[,2]))),
+  Contador = tipo_errores_adw[,3] 
+)
+
+
+
+
+
+#######################################################################
+# Generamos las bases que nos ayudaran a realizar el reporte historico#
+#######################################################################
+
+sm_hist_cuenta <- cbind.data.frame('Fecha' = mes, cuenta[,seq(1 + length(str_split(estructura_adw[3,3],'_')[[1]]))] )
+resultados_cuenta <- data.frame(matrix(nrow = dim(sm_hist_cuenta)[1], ncol = 1))
+resultados_cuenta[grep('ERROR',cuenta[,dim(cuenta)[2]]),1] <-'MAL'
+resultados_cuenta[is.na(resultados_cuenta[,1]),1] <- 'BIEN'
+colnames(resultados_cuenta) <- 'Resultados'
+sm_hist_cuenta <- cbind.data.frame(sm_hist_cuenta,resultados_cuenta)
+
+save(sm_hist_cuenta,file = paste(getwd(),'/Cuenta_',mes,'.rda',sep = ''))
+
+sm_hist_campania <- cbind.data.frame('Fecha' = mes, campania_adw[,seq(1 + length(str_split(estructura_adw[2,3],'_')[[1]]))] )
+resultados_campania <- data.frame(matrix(nrow = dim(sm_hist_campania)[1], ncol = 1))
+resultados_campania[grep('ERROR',campania_adw[,dim(campania_adw)[2]]),1] <-'MAL'
+resultados_campania[is.na(resultados_campania[,1]),1] <- 'BIEN'
+colnames(resultados_campania) <- 'Resultados'
+sm_hist_campania <- cbind.data.frame(sm_hist_campania,resultados_campania)
+
+save(sm_hist_campania,file = paste(getwd(),'/Campaña_',mes,'.rda',sep = ''))
+
+
+
+
+
+########## Tablas con Kable
+
+
+resumen_adw <- kable(resumen_adw,format = 'html',longtable = TRUE, caption = NULL,
+                     booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+error_campania_adw <- kable(error_campania_adw,format = 'html',longtable = TRUE, caption = NULL,
+                            booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+error_cuenta <- kable(error_cuenta,format = 'html',longtable = TRUE, caption = NULL,
+                      booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+####### Gráfica
+
+
+
+p_adw <- ggplot(data=imagen_adw, aes(x=Fuente, y=Registros, fill=Status)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black") +
+  scale_fill_manual(values=c("green", "red"))
+
+p_adw <- ggplotly(p_adw)
+
+
+
+q_adw <- ggplot(data=error_adw, aes(x=Seccion, y=Contador, fill=Resultado_Contenido)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black")
+
+q_adw <- ggplotly(q_adw)
+
+
+error_adw <- kable(error_adw,format = 'html',longtable = TRUE, caption = NULL,
+                      booktabs = TRUE)%>%kable_styling(latex_options = c("striped", "hold_position"),full_width = T)%>%row_spec(0, bold = T, color = "white", background = "green")
+
+
+
+
+
+```
+
+
+
+Resumen Total {data-navmenu="Summary"}
+=====================================
+
+  
+  Row 
+-------------------------------------
+  
+### % Taxonomia Correcta
+  
+```{r}
+rate_resumen <- round(((length(grep(TRUE,is.element(adname_sm[,dim(adname_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+ length(grep(TRUE,is.element(anuncios_sm[,dim(anuncios_sm)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+ length(grep(TRUE,is.element(campania_sm[,dim(campania_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  
+ length(grep(TRUE,is.element(campania_dcm[,dim(campania_dcm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+ length(grep(TRUE,is.element(creativo[,dim(creativo)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+ length(grep(TRUE,is.element(placement[,dim(placement)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+ length(grep(TRUE,is.element(adname[,dim(adname)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  
+  length(grep(TRUE,is.element(campania_adw[,dim(campania_adw)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(cuenta[,dim(cuenta)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+)/(dim(adname_sm)[1]+dim(anuncios_sm)[1]+dim(campania_sm)[1]+dim(campania_dcm)[1]+dim(creativo)[1]+dim(placement)[1]+dim(adname)[1]+dim(campania_adw)[1]+dim(cuenta)[1]))*100,2)
+
+gauge(rate_resumen, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_resumen <- length(grep(TRUE,is.element(adname_sm[,dim(adname_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(anuncios_sm[,dim(anuncios_sm)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+  length(grep(TRUE,is.element(campania_sm[,dim(campania_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  
+  length(grep(TRUE,is.element(campania_dcm[,dim(campania_dcm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(creativo[,dim(creativo)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+  length(grep(TRUE,is.element(placement[,dim(placement)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(adname[,dim(adname)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  
+  length(grep(TRUE,is.element(campania_adw[,dim(campania_adw)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(cuenta[,dim(cuenta)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+
+
+
+total_registros <- dim(adname_sm)[1]+dim(anuncios_sm)[1]+dim(campania_sm)[1]+dim(campania_dcm)[1]+dim(creativo)[1]+dim(placement)[1]+dim(adname)[1]+dim(campania_adw)[1]+dim(cuenta)[1]
+
+gauge(registros_resumen, min = 0, max = total_registros, gaugeSectors(
+  success = c(registros_resumen*.95,registros_resumen), warning = c(registros_resumen*.8, registros_resumen*.94), danger = c(0, registros_resumen*.79))
+)
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_resumen <- length(grep('ERROR', adname_sm[,dim(adname_sm)[2]]))+
+length(grep('ERROR', anuncios_sm[,dim(anuncios_sm)[2]]))+
+length(grep('ERROR', campania_sm[,dim(campania_sm)[2]]))+
+
+length(grep('ERROR', campania_dcm[,dim(campania_dcm)[2]]))+
+length(grep('ERROR', creativo[,dim(creativo)[2]]))+
+length(grep('ERROR', placement[,dim(placement)[2]]))+
+length(grep('ERROR', adname[,dim(adname)[2]]))+
+
+length(grep('ERROR', campania_adw[,dim(campania_adw)[2]]))+
+length(grep('ERROR', cuenta[,dim(cuenta)[2]]))
+
+total_registros <- dim(adname_sm)[1]+dim(anuncios_sm)[1]+dim(campania_sm)[1]+dim(campania_dcm)[1]+dim(creativo)[1]+dim(placement)[1]+dim(adname)[1]+dim(campania_adw)[1]+dim(cuenta)[1]
+gauge(registros_i_resumen, min = 0, max = total_registros, gaugeSectors(
+  success = c(0, registros_i_resumen*.1), warning = c(registros_i_resumen*.11,registros_i_resumen*.19), danger = c(registros_i_resumen*.20,registros_i_resumen*1)
+))
+```
+
+
+Row 
+-------------------------------------
+
+### % Taxonomia Correcta SOCIAL MEDIA
+  
+```{r}
+rate_resumen_sm <- round(((length(grep(TRUE,is.element(adname_sm[,dim(adname_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+ length(grep(TRUE,is.element(anuncios_sm[,dim(anuncios_sm)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+ length(grep(TRUE,is.element(campania_sm[,dim(campania_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+)/(dim(adname_sm)[1]+dim(anuncios_sm)[1]+dim(campania_sm)[1]))*100,2)
+
+gauge(rate_resumen_sm, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos SOCIAL MEDIA
+
+```{r}
+registros_resumen_sm <- length(grep(TRUE,is.element(adname_sm[,dim(adname_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(anuncios_sm[,dim(anuncios_sm)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+  length(grep(TRUE,is.element(campania_sm[,dim(campania_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+
+
+total_registros_sm <- dim(adname_sm)[1]+dim(anuncios_sm)[1]+dim(campania_sm)[1]
+
+gauge(registros_resumen_sm, min = 0, max = total_registros_sm, gaugeSectors(
+  success = c(registros_resumen_sm*.95,registros_resumen_sm), warning = c(registros_resumen_sm*.8, registros_resumen_sm*.94), danger = c(0, registros_resumen_sm*.79))
+)
+```
+
+###  Registros Incorrectos SOCIAL MEDIA
+
+```{r}
+registros_i_resumen_sm <- length(grep('ERROR', adname_sm[,dim(adname_sm)[2]]))+
+length(grep('ERROR', anuncios_sm[,dim(anuncios_sm)[2]]))+
+length(grep('ERROR', campania_sm[,dim(campania_sm)[2]]))
+
+total_registros_sm <- dim(adname_sm)[1]+dim(anuncios_sm)[1]+dim(campania_sm)[1]
+gauge(registros_i_resumen_sm, min = 0, max = total_registros_sm, gaugeSectors(
+  success = c(0, registros_i_resumen_sm*.1), warning = c(registros_i_resumen_sm*.11,registros_i_resumen_sm*.19), danger = c(registros_i_resumen_sm*.20,registros_i_resumen_sm*1)
+))
+```
+
+
+
+
+  Row 
+-------------------------------------
+  
+### % Taxonomia Correcta ADWORDS
+  
+```{r}
+rate_resumen_adw <- round(((
+  length(grep(TRUE,is.element(campania_adw[,dim(campania_adw)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(cuenta[,dim(cuenta)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+)/(dim(campania_adw)[1]+dim(cuenta)[1]))*100,2)
+
+gauge(rate_resumen_adw, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos ADWORDS
+
+```{r}
+registros_resumen_adw <-   length(grep(TRUE,is.element(campania_adw[,dim(campania_adw)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(cuenta[,dim(cuenta)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+
+
+
+total_registros_adw <- dim(campania_adw)[1]+dim(cuenta)[1]
+
+gauge(registros_resumen_adw, min = 0, max = total_registros_adw, gaugeSectors(
+  success = c(registros_resumen_adw*.95,registros_resumen_adw), warning = c(registros_resumen_adw*.8, registros_resumen_adw*.94), danger = c(0, registros_resumen_adw*.79))
+)
+```
+
+###  Registros Incorrectos ADWORDS
+
+```{r}
+registros_i_resumen_adw <- length(grep('ERROR', campania_adw[,dim(campania_adw)[2]]))+
+length(grep('ERROR', cuenta[,dim(cuenta)[2]]))
+
+total_registros_adw <- dim(campania_adw)[1]+dim(cuenta)[1]
+gauge(registros_i_resumen_adw, min = 0, max = total_registros_adw, gaugeSectors(
+  success = c(0, registros_i_resumen_adw*.1), warning = c(registros_i_resumen_adw*.11,registros_i_resumen_adw*.19), danger = c(registros_i_resumen_adw*.20,registros_i_resumen_adw*1)
+))
+```
+
+
+
+  Row 
+-------------------------------------
+  
+### % Taxonomia Correcta DCM
+  
+```{r}
+rate_resumen_dcm <- round(((
+ length(grep(TRUE,is.element(campania_dcm[,dim(campania_dcm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+ length(grep(TRUE,is.element(creativo[,dim(creativo)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+ length(grep(TRUE,is.element(placement[,dim(placement)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+ length(grep(TRUE,is.element(adname[,dim(adname)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+)/(dim(campania_dcm)[1]+dim(creativo)[1]+dim(placement)[1]+dim(adname)[1]))*100,2)
+
+gauge(rate_resumen_dcm, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos DCM
+
+```{r}
+registros_resumen_dcm <- 
+  length(grep(TRUE,is.element(campania_dcm[,dim(campania_dcm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(creativo[,dim(creativo)[2]],'CORRECTA ESTRUCTURA,CATALOGO Y RELACION')))+
+  length(grep(TRUE,is.element(placement[,dim(placement)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))+
+  length(grep(TRUE,is.element(adname[,dim(adname)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+
+
+
+total_registros_dcm <- dim(campania_dcm)[1]+dim(creativo)[1]+dim(placement)[1]+dim(adname)[1]
+
+gauge(registros_resumen_dcm, min = 0, max = total_registros_dcm, gaugeSectors(
+  success = c(registros_resumen_dcm*.95,registros_resumen_dcm), warning = c(registros_resumen_dcm*.8, registros_resumen_dcm*.94), danger = c(0, registros_resumen_dcm*.79))
+)
+```
+
+###  Registros Incorrectos DCM
+
+```{r}
+registros_i_resumen_dcm <- 
+length(grep('ERROR', campania_dcm[,dim(campania_dcm)[2]]))+
+length(grep('ERROR', creativo[,dim(creativo)[2]]))+
+length(grep('ERROR', placement[,dim(placement)[2]]))+
+length(grep('ERROR', adname[,dim(adname)[2]]))
+
+total_registros_dcm <- dim(campania_dcm)[1]+dim(creativo)[1]+dim(placement)[1]+dim(adname)[1]
+gauge(registros_i_resumen_dcm, min = 0, max = total_registros_dcm, gaugeSectors(
+  success = c(0, registros_i_resumen_dcm*.1), warning = c(registros_i_resumen_dcm*.11,registros_i_resumen_dcm*.19), danger = c(registros_i_resumen_dcm*.20,registros_i_resumen_dcm*1)
+))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Resumen {data-navmenu="SOCIAL MEDIA"}
+=====================================
+  
+  
+  Row {data-height=150}
+-------------------------------------
+  
+  
+  
+### Anuncios
+  
+```{r,results='asis'}
+Adname_sm <- dim(adname_sm)[1]
+valueBox(Adname_sm, icon = "fa-pencil")
+```
+
+
+###  Conjunto de Anuncios
+
+```{r,results='asis'}
+Anuncios_SM <- dim(anuncios_sm)[1]
+valueBox(Anuncios_SM, icon = "fa-pencil")
+```
+
+
+### Campaña
+
+```{r,results='asis'}
+Campania_SM <- dim(campania_sm)[1]
+valueBox(Campania_SM, icon = "fa-pencil")
+```
+
+
+
+Row {data-height=750}
+-------------------------------------
+  
+  
+### Resumen de estructura
+  
+```{r,results='asis'}
+resumen
+```
+
+
+
+### Gráfica de estructura
+
+```{r,results='asis'}
+p
+```
+
+
+
+Gráfica de errores {data-navmenu="SOCIAL MEDIA"}
+=====================================
+  
+### Gráfica de errores
+  
+```{r,results='asis'}
+q
+```
+
+
+Errores Anuncios {data-navmenu="SOCIAL MEDIA"}
+=====================================
+  
+  Row {data-height=150}
+-------------------------------------
+  
+### % Registros Correctos
+  
+```{r}
+rate_sm <- round((length(grep(TRUE,is.element(adname_sm[,dim(adname_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))/dim(adname_sm)[1])*100,2)
+gauge(rate_sm, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_sm <- length(grep(TRUE,is.element(adname_sm[,dim(adname_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+gauge(registros_sm, min = 0, max = dim(adname_sm)[1], gaugeSectors(
+  success = c(round(dim(adname_sm)[1]*.9), dim(adname_sm)[1]), warning = c(round(dim(adname_sm)[1]*.8), round(dim(adname_sm)[1]*.89)), danger = c(0, round(dim(adname_sm)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_sm <- length(grep('ERROR', adname_sm[,dim(adname_sm)[2]]))
+gauge(registros_i_sm, min = 0, max = dim(adname_sm)[1], gaugeSectors(
+  success = c(0, round(dim(adname_sm)[1]*.1) ), warning = c(round(dim(adname_sm)[1]*.11),round(dim(adname_sm)[1]*.19)), danger = c(round(dim(adname_sm)[1]*.20),round(dim(adname_sm)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+  
+```{r,results='asis'}
+error_adname
+```
+
+
+
+
+
+Errores Conjunto de Anuncios {data-navmenu="SOCIAL MEDIA"}
+=====================================
+  
+  Row {data-height=150}
+-------------------------------------
+  
+### % Registros Correctos
+  
+```{r}
+rate_ca <- round((length(grep(TRUE,is.element(anuncios_sm[,dim(anuncios_sm)[2]],"CORRECTA ESTRUCTURA,CATALOGO Y RELACION")))/dim(anuncios_sm)[1])*100,2)
+gauge(rate_ca, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_ca <- length(grep(TRUE,is.element(anuncios_sm[,dim(anuncios_sm)[2]],"CORRECTA ESTRUCTURA,CATALOGO Y RELACION")))
+gauge(registros_ca, min = 0, max = dim(anuncios_sm)[1], gaugeSectors(
+  success = c(round(dim(anuncios_sm)[1]*.9), dim(anuncios_sm)[1]), warning = c(round(dim(anuncios_sm)[1]*.8), round(dim(anuncios_sm)[1]*.89)), danger = c(0, round(dim(anuncios_sm)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_ca <- length(grep('ERROR', anuncios_sm[,dim(anuncios_sm)[2]]))
+gauge(registros_i_ca, min = 0, max = dim(anuncios_sm)[1], gaugeSectors(
+  success = c(0, round(dim(anuncios_sm)[1]*.1) ), warning = c(round(dim(anuncios_sm)[1]*.11),round(dim(anuncios_sm)[1]*.19)), danger = c(round(dim(anuncios_sm)[1]*.20),round(dim(anuncios_sm)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+  
+```{r,results='asis'}
+error_anuncios
+```
+
+
+
+
+
+
+
+
+Errores Campaña {data-navmenu="SOCIAL MEDIA"}
+=====================================
+  
+  Row {data-height=150}
+-------------------------------------
+  
+### % Registros Correctos
+  
+```{r}
+rate_p <- round((length(grep(TRUE,is.element(campania_sm[,dim(campania_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))/dim(campania_sm)[1])*100,2)
+gauge(rate_p, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_p <- length(grep(TRUE,is.element(campania_sm[,dim(campania_sm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+gauge(registros_p, min = 0, max = dim(campania_sm)[1], gaugeSectors(
+  success = c(round(dim(campania_sm)[1]*.9), dim(campania_sm)[1]), warning = c(round(dim(campania_sm)[1]*.8), round(dim(campania_sm)[1]*.89)), danger = c(0, round(dim(campania_sm)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_p <- length(grep('ERROR', campania_sm[,dim(campania_sm)[2]]))
+gauge(registros_i_p, min = 0, max = dim(campania_sm)[1], gaugeSectors(
+  success = c(0, round(dim(campania_sm)[1]*.1) ), warning = c(round(dim(campania_sm)[1]*.11),round(dim(campania_sm)[1]*.19)), danger = c(round(dim(campania_sm)[1]*.20),round(dim(campania_sm)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+  
+```{r,results='asis'}
+error_campania
+```
+
+
+
+
+
+
+
+
+
+
+Resumen {data-navmenu="ADWORDS"}
+=====================================
+  
+  
+  Row {data-height=150}
+-------------------------------------
+  
+  
+  
+### Campaña
+  
+```{r,results='asis'}
+Campania_adw <- dim(campania_adw)[1]
+valueBox(Campania_adw, icon = "fa-pencil")
+```
+
+
+###  Cuenta
+
+```{r,results='asis'}
+Cuenta <- dim(cuenta)[1]
+valueBox(Cuenta, icon = "fa-pencil")
+```
+
+
+
+Row {data-height=750}
+-------------------------------------
+  
+  
+### Resumen de estructura
+  
+```{r,results='asis'}
+resumen_adw
+```
+
+
+
+### Gráfica de estructura
+
+```{r,results='asis'}
+p_adw
+```
+
+
+
+Gráfica de errores {data-navmenu="ADWORDS"}
+=====================================
+  
+### Gráfica de errores
+  
+```{r,results='asis'}
+q_adw
+```
+
+
+Errores Campaña {data-navmenu="ADWORDS"}
+=====================================
+  
+  Row {data-height=150}
+-------------------------------------
+  
+### % Registros Correctos
+  
+```{r}
+rate_adw <- round((length(grep(TRUE,is.element(campania_adw[,dim(campania_adw)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))/dim(campania_adw)[1])*100,2)
+gauge(rate_adw, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_adw <- length(grep(TRUE,is.element(campania_adw[,dim(campania_adw)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+gauge(registros_adw, min = 0, max = dim(campania_adw)[1], gaugeSectors(
+  success = c(round(dim(campania_adw)[1]*.9), dim(campania_adw)[1]), warning = c(round(dim(campania_adw)[1]*.8), round(dim(campania_adw)[1]*.89)), danger = c(0, round(dim(campania_adw)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_adw <- length(grep('ERROR', campania_adw[,dim(campania_adw)[2]]))
+gauge(registros_i_adw, min = 0, max = dim(campania_adw)[1], gaugeSectors(
+  success = c(0, round(dim(campania_adw)[1]*.1) ), warning = c(round(dim(campania_adw)[1]*.11),round(dim(campania_adw)[1]*.19)), danger = c(round(dim(campania_adw)[1]*.20),round(dim(campania_adw)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+  
+```{r,results='asis'}
+error_campania_adw
+```
+
+
+
+
+
+Errores Cuenta {data-navmenu="ADWORDS"}
+=====================================
+  
+  Row {data-height=150}
+-------------------------------------
+  
+### % Registros Correctos
+  
+```{r}
+rate_cuenta <- round((length(grep(TRUE,is.element(cuenta[,dim(cuenta)[2]], "CORRECTA ESTRUCTURA Y CATALOGO")))/dim(cuenta)[1])*100,2)
+gauge(rate_cuenta, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_cuenta <- length(grep(TRUE,is.element(cuenta[,dim(cuenta)[2]], "CORRECTA ESTRUCTURA Y CATALOGO")))
+gauge(registros_cuenta, min = 0, max = dim(cuenta)[1], gaugeSectors(
+  success = c(round(dim(cuenta)[1]*.9), dim(cuenta)[1]), warning = c(round(dim(cuenta)[1]*.8), round(dim(cuenta)[1]*.89)), danger = c(0, round(dim(cuenta)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_cuenta <- length(grep('ERROR', cuenta[,dim(cuenta)[2]]))
+gauge(registros_i_cuenta, min = 0, max = dim(cuenta)[1], gaugeSectors(
+  success = c(0, round(dim(cuenta)[1]*.1) ), warning = c(round(dim(cuenta)[1]*.11),round(dim(cuenta)[1]*.19)), danger = c(round(dim(cuenta)[1]*.20),round(dim(cuenta)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+  
+```{r,results='asis'}
+error_cuenta
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Resumen {data-navmenu="DCM"}
+=====================================
+
+
+Row {data-height=150}
+-------------------------------------
+
+
+
+### Campaña
+
+```{r,results='asis'}
+Campania_DCM <- dim(campania_dcm)[1]
+valueBox(Campania_DCM, icon = "fa-pencil")
+```
+
+
+###  Creativo
+
+```{r,results='asis'}
+Creativo_DCM <- dim(creativo)[1]
+valueBox(Creativo_DCM, icon = "fa-pencil")
+```
+
+
+### Placement
+
+```{r,results='asis'}
+Placement_DCM <- dim(placement)[1]
+valueBox(Placement_DCM, icon = "fa-pencil")
+```
+
+### Adname
+
+```{r,results='asis'}
+Adname_DCM <- dim(adname)[1]
+valueBox(Adname_DCM, icon = "fa-pencil")
+```
+
+Row {data-height=750}
+-------------------------------------
+
+
+### Resumen de estructura
+
+```{r,results='asis'}
+resumen_dcm
+```
+
+
+
+### Gráfica de estructura
+
+```{r,results='asis'}
+p_dcm
+```
+
+
+
+Gráfica de errores {data-navmenu="DCM"}
+=====================================
+
+### Gráfica de errores
+
+```{r,results='asis'}
+q_dcm
+```
+
+
+Errores Campaña {data-navmenu="DCM"}
+=====================================
+
+Row {data-height=150}
+-------------------------------------
+
+### % Registros Correctos
+
+```{r}
+rate <- round((length(grep(TRUE,is.element(campania_dcm[,dim(campania_dcm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))/dim(campania_dcm)[1])*100,2)
+gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros <- length(grep(TRUE,is.element(campania_dcm[,dim(campania_dcm)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+gauge(registros, min = 0, max = dim(campania_dcm)[1], gaugeSectors(
+  success = c(round(dim(campania_dcm)[1]*.9), dim(campania_dcm)[1]), warning = c(round(dim(campania_dcm)[1]*.8), round(dim(campania_dcm)[1]*.89)), danger = c(0, round(dim(campania_dcm)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i <- length(grep('ERROR', campania_dcm[,dim(campania_dcm)[2]]))
+gauge(registros_i, min = 0, max = dim(campania_dcm)[1], gaugeSectors(
+  success = c(0, round(dim(campania_dcm)[1]*.1) ), warning = c(round(dim(campania_dcm)[1]*.11),round(dim(campania_dcm)[1]*.19)), danger = c(round(dim(campania_dcm)[1]*.20),round(dim(campania_dcm)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+
+```{r,results='asis'}
+error_campania_dcm
+```
+
+
+
+
+
+Errores Creativo {data-navmenu="DCM"}
+=====================================
+
+Row {data-height=150}
+-------------------------------------
+
+### % Registros Correctos
+
+```{r}
+rate_c <- round((length(grep(TRUE,is.element(creativo[,dim(creativo)[2]],"CORRECTA ESTRUCTURA,CATALOGO Y RELACION")))/dim(creativo)[1])*100,2)
+gauge(rate_c, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_c <- length(grep(TRUE,is.element(creativo[,dim(creativo)[2]],"CORRECTA ESTRUCTURA,CATALOGO Y RELACION")))
+gauge(registros_c, min = 0, max = dim(creativo)[1], gaugeSectors(
+  success = c(round(dim(creativo)[1]*.9), dim(creativo)[1]), warning = c(round(dim(creativo)[1]*.8), round(dim(creativo)[1]*.89)), danger = c(0, round(dim(creativo)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_c <- length(grep('ERROR', creativo[,dim(creativo)[2]]))
+gauge(registros_i_c, min = 0, max = dim(creativo)[1], gaugeSectors(
+  success = c(0, round(dim(creativo)[1]*.1) ), warning = c(round(dim(creativo)[1]*.11),round(dim(creativo)[1]*.19)), danger = c(round(dim(creativo)[1]*.20),round(dim(creativo)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+
+```{r,results='asis'}
+error_creativo
+```
+
+
+
+
+
+
+
+
+Errores Placement {data-navmenu="DCM"}
+=====================================
+
+Row {data-height=150}
+-------------------------------------
+
+### % Registros Correctos
+
+```{r}
+rate_p <- round((length(grep(TRUE,is.element(placement[,dim(placement)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))/dim(placement)[1])*100,2)
+gauge(rate_p, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_p <- length(grep(TRUE,is.element(placement[,dim(placement)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+gauge(registros_p, min = 0, max = dim(placement)[1], gaugeSectors(
+  success = c(round(dim(placement)[1]*.9), dim(placement)[1]), warning = c(round(dim(placement)[1]*.8), round(dim(placement)[1]*.89)), danger = c(0, round(dim(placement)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_p <- length(grep('ERROR', placement[,dim(placement)[2]]))
+gauge(registros_i_p, min = 0, max = dim(placement)[1], gaugeSectors(
+  success = c(0, round(dim(placement)[1]*.1) ), warning = c(round(dim(placement)[1]*.11),round(dim(placement)[1]*.19)), danger = c(round(dim(placement)[1]*.20),round(dim(placement)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+
+```{r,results='asis'}
+error_placement
+```
+
+
+
+
+
+
+
+
+Errores Adname {data-navmenu="DCM"}
+=====================================
+
+Row {data-height=150}
+-------------------------------------
+
+### % Registros Correctos
+
+```{r}
+rate_a <- round((length(grep(TRUE,is.element(adname[,dim(adname)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))/dim(adname)[1])*100,2)
+gauge(rate_a, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(90, 100), warning = c(80, 89), danger = c(0, 79)
+))
+```
+
+
+###  Registros Correctos
+
+```{r}
+registros_a <- length(grep(TRUE,is.element(adname[,dim(adname)[2]],'CORRECTA ESTRUCTURA Y CATALOGO')))
+gauge(registros_a, min = 0, max = dim(adname)[1], gaugeSectors(
+  success = c(round(dim(adname)[1]*.9), dim(adname)[1]), warning = c(round(dim(adname)[1]*.8), round(dim(adname)[1]*.89)), danger = c(0, round(dim(adname)[1]*.79))
+))
+```
+
+###  Registros Incorrectos
+
+```{r}
+registros_i_a <- length(grep('ERROR', adname[,dim(adname)[2]]))
+gauge(registros_i_a, min = 0, max = dim(adname)[1], gaugeSectors(
+  success = c(0, round(dim(adname)[1]*.1) ), warning = c(round(dim(adname)[1]*.11),round(dim(adname)[1]*.19)), danger = c(round(dim(adname)[1]*.20),round(dim(adname)[1]*1))
+))
+```
+
+
+Row {data-height=450}
+-------------------------------------
+
+```{r,results='asis'}
+error_adname_dcm
+```
+
+
+
+
