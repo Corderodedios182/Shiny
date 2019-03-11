@@ -66,15 +66,17 @@ Base_i = Base_i %>%
 ##Regla 2 Aunque la estructura este bien, el contenido como esta.
 libres = Variables[Variables$field_item_code == "libre" | Variables$field_item_code == "fecha",]
 libres = as.vector(names(Base_i[,libres$Variable]))
+libres = c(libres,paste0("V_",libres))
 
-Correcta_Estructura <- Base_i %>% filter(Comentarios == "Correcta_Estructura")
-V = select(Base_i, contains("V_"))
+Regla_2 <- Base_i %>% select(- libres)
+Regla_2 <- select(Regla_2, contains("V_"))
 
-for(i in 1:11){
-eval(parse(text = paste0(
-  'V = V %>% mutate(',names(test)[i],'_e = ifelse(test$',names(test)[i],' == "FALSE","error_',names(test)[i],'","No error"))')))
+for(i in 1:dim(Regla_2)[2]){
+  eval(parse(text = paste0(
+  'Regla_2 = Regla_2 %>% mutate(',names(Regla_2)[i],' = ifelse(Regla_2$',names(Regla_2)[i],' == "FALSE","error_',names(Regla_2)[i],'","No error"))')))
 }
 
+Base_i_F <- cbind(Base_i, Regla_2)
 ##Regla 3, Fecha correcta
 
 
@@ -82,7 +84,7 @@ eval(parse(text = paste0(
 #Resumen Resultados#
 ####################
 
-
+Regla_2
 
 
 
