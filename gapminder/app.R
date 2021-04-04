@@ -1,4 +1,5 @@
 library(shiny)
+library(shinyWidgets)
 library(ggplot2)
 library(tidyverse)
 library(shinythemes)
@@ -18,28 +19,47 @@ ui <- fluidPage(
     sidebarLayout(
      sidebarPanel(
          #1.Add input (UI)
-         selectInput("continent","Select Continent", choices = unique(gapminder$continent), multiple = TRUE),
-         selectInput("year", "Select Year", choices = unique(gapminder$year), multiple = TRUE )),
-            
+         
+         checkboxGroupInput(
+             inputId = "continent",
+             label = "Seleccion de continentes", 
+             choices = unique(gapminder$continent),
+             selected = "Americas" ),
+         pickerInput(
+             inputId = "year",
+             label = "Seleccion de años", 
+             choices = unique(gapminder$year),
+             multiple = TRUE ,
+             selected = 2007)
+         ),
+
      mainPanel(    
          tabsetPanel(
          #2.Add output (UI/Server)
-         tabPanel("Plot", plotOutput("plot_1"), plotOutput("plot_2")),
-         tabPanel("Table", DT::dataTableOutput('table')) ))
+         tabPanel("Graficas", plotOutput("plot_1"), plotOutput("plot_2")),
+         tabPanel("Tablas", DT::dataTableOutput('table')) ))
      )
     )
 
 server <- function(input, output) {
     
     data_reactive <- reactive({ gapminder %>% filter(continent %in% input$continent & year %in% input$year) })
-    
-    output$plot_1 <- renderPlot({ data_reactive() %>% 
+
+    output$plot_1 <- renderPlot({ 
+                                    
+                                  validate(need((input$year != '') & (input$continent != ''), "Puedes explorar otros continentes y años"))
+                                  
+                                  data_reactive() %>% 
                                   ggplot( aes(gdpPercap, lifeExp, size = pop, color=continent)) +
                                   geom_point() +
                                   ggtitle("Ingreso Percapita, Esperanza de Vida y población") + 
                                   theme_bw()  })
     
-    output$plot_2 <- renderPlot({ data_reactive() %>% 
+    output$plot_2 <- renderPlot({ 
+        
+                                  validate(need((input$year != '') & (input$continent != ''), "Puedes explorar otros continentes y años"))
+        
+                                  data_reactive() %>% 
                                   ggplot(aes(x=factor(year),y=lifeExp, fill=continent)) +
                                   geom_boxplot() +
                                   geom_jitter(width=0.1,alpha=0.2) +
@@ -49,8 +69,10 @@ server <- function(input, output) {
                                   ggtitle("Esperanza de Vida paises del Continente") })
     
     output$table <- DT::renderDataTable(DT::datatable({ data_reactive() %>% 
-                                   group_by(continent, year) %>% 
-                                   summarise(freq = n(),promedio = round(mean(lifeExp)))  })) 
+                                                        group_by(country, continent, year) %>%
+                                                        summarize(esperanza_de_vida = ceiling(mean(lifeExp)), 
+                                                                  poblacion = round(mean(pop),0), 
+                                                                  ingresos = round(mean(gdpPercap)))  })) 
     }
 
 # Run the application 
