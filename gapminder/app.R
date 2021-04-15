@@ -9,6 +9,37 @@ library(reactlog)
 library(plotly)
 library(gapminder)
 library(leaflet)
+library(wordcloud)
+library(wordcloud2)
+library(tm)
+
+create_wordcloid <- function(data, num_words = 100, background = "white") {
+    
+    # If text is provided, convert it to a dataframe of word frequencies
+    if (is.character(data)) {
+        corpus <- Corpus(VectorSource(data))
+        corpus <- tm_map(corpus, tolower)
+        #corpus <- tm_map(corpus, removePunctuation)
+        corpus <- tm_map(corpus, removeNumbers)
+        corpus <- tm_map(corpus, removeWords, stopwords("english"))
+        tdm <- as.matrix(TermDocumentMatrix(corpus))
+        data <- sort(rowSums(tdm), decreasing = TRUE)
+        data <- data.frame(word = names(data), freq = as.numeric(data))
+    }
+    
+    # Make sure a proper num_words is provided
+    if (!is.numeric(num_words) || num_words < 3) {
+        num_words <- 3
+    }  
+    
+    # Grab the top n most common words
+    data <- head(data, n = num_words)
+    if (nrow(data) == 0) {
+        return(NULL)
+    }
+    
+    wordcloud2(data, backgroundColor = background, size = .2)
+}
 
 my_css <- "
 #download_data {
@@ -51,6 +82,7 @@ ui <- fluidPage(
              selected = 2007),
          checkboxInput("fit", "Mostrar Grafica coloreada por País", FALSE),
          downloadButton(outputId = "download_data", label = "Descargar información"),
+         
          textInput(
              inputId = 'name',
              'Mostrando Evento Oberve'),
@@ -61,6 +93,7 @@ ui <- fluidPage(
          actionButton('show_about', 'About'),
          sliderInput('nb_fatalities', 'Minimum Fatalities', 1, 40, 10),
          dateRangeInput('date_range', 'Select Date', "2010-01-01", "2019-12-01")
+         
          ),
 
      mainPanel(
@@ -73,7 +106,8 @@ ui <- fluidPage(
                               plotlyOutput("plot_1"),
                               plotlyOutput("plot_2")),
          tabPanel("Tablas", DT::dataTableOutput('table')),
-         tabPanel( "Mapa", leaflet::leafletOutput('map')) ))
+         tabPanel("Mapa", leaflet::leafletOutput('map')),
+         tabPanel("Nube de Palabras", wordcloud2Output(outputId = "cloud")  )))
      )
     )
 
@@ -169,16 +203,19 @@ server <- function(input, output) {
             addCircleMarkers(
                 popup = ~summary, radius = ~sqrt(fatalities)*3,
                 fillColor = 'red', color = 'red', weight = 1
-            )
-    })
+            ) })
     
     output$download_data <- downloadHandler(
         
         filename = "gapminder_app.csv",
         content = function(file){
-            write.csv(data_reactive(), file, row.names = FALSE)
-        }
-    )
+            write.csv(data_reactive(), file, row.names = FALSE) })
+    
+    output$cloud <- renderWordcloud2({
+        # Create a word cloud object
+        create_wordcloid( as.character(data_reactive()$country) )
+    })
+    
     
     }
 
