@@ -1,3 +1,4 @@
+library(lubridate)
 library(shiny)
 library(shinyWidgets)
 library(ggplot2)
@@ -7,22 +8,40 @@ library(gapminder)
 library(reactlog)
 library(plotly)
 library(gapminder)
+library(leaflet)
 
+my_css <- "
+#download_data {
+  /* Change the background color of the download button
+     to orange. */
+  background: blue;
+
+  /* Change the text size to 20 pixels. */
+  font-size: 15px;
+}
+
+#table {
+  /* Change the text color of the table to red. */
+  color: purple;
+}
+"
 
 ui <- fluidPage(
     
-    titlePanel("Exploración de Datos, base Gapminder"),
-    theme = shinytheme("yeti"),
+    titlePanel(h1(strong(em("Exploración de Datos, base Gapminder")))),
+    theme = shinytheme("simplex"),
     #shinythemes::themeSelector(),
+    tags$style(my_css),
     
     #3.Update Layout (UI)
     sidebarLayout(
-     sidebarPanel(
+        sidebarPanel(
+            strong("Filtro y Botones de la aplicación"),
          #1.Add input (UI)
          checkboxGroupInput(
              inputId = "continent",
              label = "Seleccion de continentes", 
-             choices = unique(gapminder$continent),
+             choices = levels(gapminder$continent),
              selected = "Americas" ),
          pickerInput(
              inputId = "year",
@@ -30,24 +49,31 @@ ui <- fluidPage(
              choices = unique(gapminder$year),
              multiple = TRUE ,
              selected = 2007),
+         checkboxInput("fit", "Mostrar Grafica coloreada por País", FALSE),
+         downloadButton(outputId = "download_data", label = "Descargar información"),
          textInput(
              inputId = 'name',
              'Mostrando Evento Oberve'),
          actionButton("show_reactivo",
                       "Boton Reactivo"),
          actionButton("show_observe",
-                      "Boton ObserveEvent")
+                      "Boton ObserveEvent"),
+         actionButton('show_about', 'About'),
+         sliderInput('nb_fatalities', 'Minimum Fatalities', 1, 40, 10),
+         dateRangeInput('date_range', 'Select Date', "2010-01-01", "2019-12-01")
          ),
 
-     mainPanel(    
+     mainPanel(
+         em(h2("Datos y Graficas interactivas")),
          tabsetPanel(
          #2.Add output (UI/Server)
          tabPanel("Graficas", textOutput("show_isolate"),
                               textOutput("show_observe"),
                               textOutput("show_reactivo"),
-                              plotOutput("plot_1"),
-                              plotOutput("plot_2")),
-         tabPanel("Tablas", DT::dataTableOutput('table')) ))
+                              plotlyOutput("plot_1"),
+                              plotlyOutput("plot_2")),
+         tabPanel("Tablas", DT::dataTableOutput('table')),
+         tabPanel( "Mapa", leaflet::leafletOutput('map')) ))
      )
     )
 
@@ -59,6 +85,10 @@ server <- function(input, output) {
     #ObserveEvent, es similar a observe a diferencia que necesita un disparador.
     observeEvent(input$show_observe, {
         showModal(modalDialog(paste("Hola ", input$name))) } )
+    
+    observeEvent(input$show_about, {
+        showModal(modalDialog("This data was compiled by Mother Jones, nonprofit founded in 1976. Originally covering cases from 1982-2012, this database has since been expanded numerous times to remain current.", title = 'About'))
+    })
     
     #eventeReactive, Cree una variable , con un disparador definido similar a observeEvent. Use esto cuando desee una variable reactiva que se evalúe debido a un disparador en lugar de cuando se llama.
     mensaje_reactive <- eventReactive(input$show_reactivo, {
@@ -76,17 +106,44 @@ server <- function(input, output) {
         
     })
     
-    output$plot_1 <- renderPlot({ 
-                                    
-                                  validate(need((input$year != '') & (input$continent != ''), "Puedes explorar otros continentes y años"))
-                                  
-                                  data_reactive() %>% 
-                                  ggplot( aes(gdpPercap, lifeExp, size = pop, color=continent)) +
-                                  geom_point() +
-                                  ggtitle("Ingreso Percapita, Esperanza de Vida y población") + 
-                                  theme_bw()  })
+    rval_mass_shootings <- reactive({
+        
+        mass_shootings <- read.csv("mass-shootings.csv")
+        
+        mass_shootings$date <- mdy(mass_shootings$date)
+        
+        mass_shootings %>%
+            filter(
+                date >= input$date_range[1],
+                date <= input$date_range[2],
+                fatalities >= input$nb_fatalities)
+    })
     
-    output$plot_2 <- renderPlot({ 
+    
+    output$plot_1 <- renderPlotly({ 
+        
+        ggplotly({
+                             
+        validate(need((input$year != '') & (input$continent != ''), "Puedes explorar otros continentes y años"))
+                                  
+        g_1 <- data_reactive() %>% 
+            ggplot( aes(gdpPercap, lifeExp, size = pop, colour=continent)) +
+            geom_point() +
+            ggtitle("Ingreso Percapita, Esperanza de Vida y población") + 
+            theme_bw()
+        
+        g_2 <- data_reactive() %>% 
+            ggplot( aes(gdpPercap, lifeExp, size = pop, colour=country)) +
+            geom_point() +
+            facet_wrap(~continent) + 
+            ggtitle("Ingreso Percapita, Esperanza de Vida y población") + 
+            theme_bw()
+                
+        if (input$fit) { g_2 } else { g_1 } })
+        
+        })       
+    
+    output$plot_2 <- renderPlotly({ 
         
                                   validate(need((input$year != '') & (input$continent != ''), "Puedes explorar otros continentes y años"))
         
@@ -104,6 +161,25 @@ server <- function(input, output) {
                                                         summarize(esperanza_de_vida = ceiling(mean(lifeExp)), 
                                                                   poblacion = round(mean(pop),0), 
                                                                   ingresos = round(mean(gdpPercap)))  })) 
+    output$map <- leaflet::renderLeaflet({
+        rval_mass_shootings() %>%
+            leaflet() %>% 
+            setView( -98.58, 39.82, zoom = 5) %>% 
+            addTiles() %>% 
+            addCircleMarkers(
+                popup = ~summary, radius = ~sqrt(fatalities)*3,
+                fillColor = 'red', color = 'red', weight = 1
+            )
+    })
+    
+    output$download_data <- downloadHandler(
+        
+        filename = "gapminder_app.csv",
+        content = function(file){
+            write.csv(data_reactive(), file, row.names = FALSE)
+        }
+    )
+    
     }
 
 # Run the application 
