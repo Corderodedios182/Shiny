@@ -13,13 +13,13 @@ library(wordcloud)
 library(wordcloud2)
 library(tm)
 
-create_wordcloid <- function(data, num_words = 100, background = "white") {
+create_wordcloud <- function(data, num_words = 100, background = "white") {
     
     # If text is provided, convert it to a dataframe of word frequencies
     if (is.character(data)) {
         corpus <- Corpus(VectorSource(data))
         corpus <- tm_map(corpus, tolower)
-        #corpus <- tm_map(corpus, removePunctuation)
+        corpus <- tm_map(corpus, removePunctuation)
         corpus <- tm_map(corpus, removeNumbers)
         corpus <- tm_map(corpus, removeWords, stopwords("english"))
         tdm <- as.matrix(TermDocumentMatrix(corpus))
@@ -38,7 +38,7 @@ create_wordcloid <- function(data, num_words = 100, background = "white") {
         return(NULL)
     }
     
-    wordcloud2(data, backgroundColor = background, size = .2)
+    wordcloud2(data, backgroundColor = background)
 }
 
 my_css <- "
@@ -92,7 +92,11 @@ ui <- fluidPage(
                       "Boton ObserveEvent"),
          actionButton('show_about', 'About'),
          sliderInput('nb_fatalities', 'Minimum Fatalities', 1, 40, 10),
-         dateRangeInput('date_range', 'Select Date', "2010-01-01", "2019-12-01")
+         dateRangeInput('date_range', 'Select Date', "2010-01-01", "2019-12-01"),
+         
+         fileInput("file", "Selecciona un archivo"),
+         checkboxInput("you_text", "Colocar tu texto: ", FALSE),
+         textAreaInput("text", "Colocar texto: ", rows = 10)
          
          ),
 
@@ -211,12 +215,20 @@ server <- function(input, output) {
         content = function(file){
             write.csv(data_reactive(), file, row.names = FALSE) })
     
-    output$cloud <- renderWordcloud2({
-        # Create a word cloud object
-        create_wordcloid( as.character(data_reactive()$country) )
+    input_file <- reactive({
+        if (is.null(input$file)) {
+            return("")
+        }
+        # Read the text in the uploaded file
+        readLines(input$file$datapath)
     })
     
-    
+    output$cloud <- renderWordcloud2({
+        
+        if(input$you_text) { create_wordcloud( as.character(input$text) ) } 
+        else { create_wordcloud(data = as.character(input_file()), num_words = input$num, background = input$col) }
+    })
+
     }
 
 # Run the application 
