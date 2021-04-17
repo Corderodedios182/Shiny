@@ -6,7 +6,8 @@ header <- dashboardHeader(
     messageItem(
       from = "Lucy",
       message = "You can view the International Space Station!",
-      href = "https://spotthestation.nasa.gov/sightings/"
+      href = "https://spotthestation.nasa.gov/sightings/",
+      icon = icon("rocket")
     ),
     # Add a second messageItem() 
     messageItem(
@@ -29,9 +30,13 @@ header <- dashboardHeader(
 
 
 sidebar <- dashboardSidebar(
+  selectInput(inputId = "name", 
+              label = "Name",
+              choices = starwars$name),
   sidebarMenu(
     menuItem("Data",
-             tabName = "data"),
+             tabName = "data",
+             icon = icon("rocket")),
     menuItem("Dashboard",
              tabName = "dashboard"
              )
@@ -41,7 +46,8 @@ body <- dashboardBody(
   tabItems(
     tabItem(tabName = "data",
             tabBox(
-              tabPanel("Fun Fact 1",title = "Panel 1"),
+              tabPanel("Fun Fact 1",title = "Panel 1",
+                       textOutput("name")),
               tabPanel("Fun Fact 2", title = "Panel 2"))),
     tabItem(tabName = "dashboard",
             "graficas y analisis")
@@ -54,6 +60,10 @@ ui <- dashboardPage(header = header,
                     sidebar = sidebar,
                     body = body)
 
-server <- function(input, output) {}
+server <- function(input, output) {
+  output$name <- renderText({
+    input$name
+  })
+}
 
 shinyApp(ui, server)
