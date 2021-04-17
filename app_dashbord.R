@@ -1,3 +1,4 @@
+library(dplyr)
 library(shinydashboard)
 
 header <- dashboardHeader(
@@ -33,6 +34,7 @@ sidebar <- dashboardSidebar(
   selectInput(inputId = "name", 
               label = "Name",
               choices = starwars$name),
+  actionButton("click", "Update click box"),
   sidebarMenu(
     menuItem("Data",
              tabName = "data",
@@ -47,7 +49,9 @@ body <- dashboardBody(
     tabItem(tabName = "data",
             tabBox(
               tabPanel("Fun Fact 1",title = "Panel 1",
-                       textOutput("name")),
+                       textOutput("name"),
+                       valueBoxOutput("click_box"),
+                       tableOutput("table")),
               tabPanel("Fun Fact 2", title = "Panel 2"))),
     tabItem(tabName = "dashboard",
             "graficas y analisis")
@@ -60,9 +64,29 @@ ui <- dashboardPage(header = header,
                     sidebar = sidebar,
                     body = body)
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  reactive_data <- reactiveFileReader(
+    intervalMillis = 1000,
+    session =  session, 
+    filePath = "http://s3.amazonaws.com/assets.datacamp.com/production/course_6225/datasets/starwars.csv",
+    readFunc = function(filePath) { 
+      read.csv(filePath)}
+  )
+  
+  output$table <- renderTable({
+    reactive_data()
+  })
+  
   output$name <- renderText({
     input$name
+  })
+  
+  output$click_box <- renderValueBox({
+    valueBox(
+      input$click, 
+      "Click Box"
+    )
   })
 }
 

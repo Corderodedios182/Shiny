@@ -26,6 +26,9 @@ create_wordcloud <- function(data, num_words = 100, background = "white") {
   wordcloud2(data, backgroundColor = background)
 }
 
+#La lectura de archivos es mas eficiente fuera de server
+mass_shootings <- read.csv("data/mass-shootings.csv")
+
 server <- function(input, output) {
   #https://stackoverflow.com/questions/53016404/advantages-of-reactive-vs-observe-vs-observeevent/53016939#53016939
   #observe, monitorea en cualquier momento todos los valores reactivos en su entorno, no devuelve ningun valor para su uso en el codigo
@@ -56,8 +59,6 @@ server <- function(input, output) {
   })
   
   rval_mass_shootings <- reactive({
-    
-    mass_shootings <- read.csv("data/mass-shootings.csv")
     
     mass_shootings$date <- mdy(mass_shootings$date)
     
